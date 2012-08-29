@@ -1,7 +1,7 @@
 //----------------------------------------------------------
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Released under the Microsoft Office Extensible File License
-// https://github.com/stephen-hardy/xlsx.js/license.txt
+// https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
 function xlsx(file) { // v1.0.1
 	var result, zip = new JSZip(), zipTime, processTime, s, i, j, k, l, t, w, sharedStrings, index,

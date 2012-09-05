@@ -3,10 +3,10 @@
 // Released under the Microsoft Office Extensible File License
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
-function xlsx(file) { // v1.0.1
+function xlsx(file) { // v1.1.0
 	var result, zip = new JSZip(), zipTime, processTime, s, i, j, k, l, t, w, sharedStrings, index,
-		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, 
-		alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'II', 'JJ', 'KK', 'LL', 'MM', 'NN', 'OO', 'PP', 'QQ', 'RR', 'SS', 'TT', 'UU', 'VV', 'WW', 'XX', 'YY', 'ZZ'];
+		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id;
+	function alphabet(i) { var s = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', t = Math.floor(i / 26) - 1; return (t > -1 ? alphabet(t) : '') + s.charAt(i % 26); }
 	
 	if (typeof file === 'string') { // Load
 		zipTime = +new Date();
@@ -18,7 +18,7 @@ function xlsx(file) { // v1.0.1
 			sharedStrings = [];
 			s = zip.files['xl/sharedStrings.xml'].data.split('<t>');
 			i = s.length;
-			while(--i) { sharedStrings[i - 1] = s[i].substring(0, s[i].indexOf('<')); }
+			while(--i) { sharedStrings[i - 1] = s[i].substring(0, s[i].indexOf('<')); } // Do not process i === 0, because s[0] is the text before first t element
 		//}
 		
 		//{ Get file info from "docProps/core.xml"
@@ -42,7 +42,7 @@ function xlsx(file) { // v1.0.1
 			else { result.activeWorksheet = 0; }
 			s = s.split('<sheet ');
 			i = s.length;
-			while (--i) {
+			while (--i) { // Do not process i === 0, because s[0] is the text before the first sheet element
 				result.worksheets.unshift([]);
 				id = s[i].substr(s[i].indexOf('name="') + 6);
 				result.worksheets[0].name = id.substring(0, id.indexOf('"'));
@@ -55,11 +55,11 @@ function xlsx(file) { // v1.0.1
 				w = result.worksheets[i];
 				w.table = s[0].indexOf('<tableParts ') > 0;
 				j = s.length;
-				while (--j) {
+				while (--j) { // Don't process j === 0, because s[0] is the text before the first row element
 					w.unshift([]);
 					k = s[j].split('<c ');
 					l = k.length;
-					while (--l) {
+					while (--l) { // Don't process l === 0, because k[0] is the text before the first c (cell) element
 						t = k[l];
 						index = t.indexOf('t="s"') > 0;
 						t = t.substring(t.indexOf('<v>') + 3, t.indexOf('</v>'));
@@ -84,15 +84,9 @@ function xlsx(file) { // v1.0.1
 			xl.file('styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"><fonts count="1" x14ac:knownFonts="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/><tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/><extLst><ext uri="{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:slicerStyles defaultSlicerStyle="SlicerStyleLight1"/></ext></extLst></styleSheet>');
 		//}
 		//{ Not content dependent
-			docProps.file('core.xml', ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>',
-				file.creator || 'XLSX.js',
-				'</dc:creator><cp:lastModifiedBy>',
-				file.lastModifiedBy || 'XLSX.js',
-				'</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">',
-				(file.created || new Date()).toISOString(),
-				'</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">',
-				(file.modified || new Date()).toISOString(),
-				'</dcterms:modified></cp:coreProperties>'].join(''));
+			docProps.file('core.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>'
+				+ (file.creator || 'XLSX.js') + '</dc:creator><cp:lastModifiedBy>' + (file.lastModifiedBy || 'XLSX.js') + '</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">'
+				+ (file.created || new Date()).toISOString() + '</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">' + (file.modified || new Date()).toISOString() + '</dcterms:modified></cp:coreProperties>');
 		//}
 		//{ Content dependent
 			w = file.worksheets.length;
@@ -100,42 +94,40 @@ function xlsx(file) { // v1.0.1
 				id = w + 1;
 				//{ Generate sheetX.xml in var s
 					worksheet = file.worksheets[w];
-					s = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">',
-						'<dimension ref="A1:', alphabet[worksheet[0].length - 1], worksheet.length, '"/><sheetViews><sheetView ', 
-						(w === file.activeWorksheet ? 'tabSelected="1" ' : ''),
-						' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/><sheetData>'];
+					s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
+						+ '<dimension ref="A1:' + alphabet(worksheet[0].length - 1) + worksheet.length + '"/><sheetViews><sheetView ' + (w === file.activeWorksheet ? 'tabSelected="1" ' : '')
+						+ ' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/><sheetData>';
 					
 					i = -1; l = worksheet.length;
 					while (++i < l) {
 						j = -1; k = worksheet[i].length;
-						s.push('<row r="' + (i + 1) + '" spans="1:' + k + '" x14ac:dyDescent="0.25">');
+						s += '<row r="' + (i + 1) + '" spans="1:' + k + '" x14ac:dyDescent="0.25">';
 						while (++j < k) {
 							t = worksheet[i][j];
-							if (t && parseInt(t, 10).toString() === 'NaN') { 
-								sharedStrings[1]++;
+							if (t && parseInt(t, 10).toString() === 'NaN') { // If value is text, place a sharedString reference instead of the value (use parseInt because +emptyString === 0)
+								sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 								index = sharedStrings[0].indexOf(t);
 								if (index < 0) { index = sharedStrings[0].push(t) - 1; }
-								s.push('<c r="' + alphabet[j] + (i + 1) + '" t="s"><v>' + index + '</v></c>'); 
+								s += '<c r="' + alphabet(j) + (i + 1) + '" t="s"><v>' + index + '</v></c>'; 
 							}
-							else { s.push('<c r="' + alphabet[j] + (i + 1) + '"><v>' + t + '</v></c>'); }
+							else { s += '<c r="' + alphabet(j) + (i + 1) + '"><v>' + t + '</v></c>'; }
 						}
-						s.push('</row>');
+						s += '</row>';
 					}
-					s.push('</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>');
-					if (worksheet.table) { s.push('<tableParts count="1"><tablePart r:id="rId1"/></tableParts>'); }
-					s.push('</worksheet>');
-					xlWorksheets.file('sheet' + id + '.xml', s.join(''));
+					s += '</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
+					if (worksheet.table) { s += '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>'; }
+					xlWorksheets.file('sheet' + id + '.xml', s + '</worksheet>');
 				//}
 				
 				if (worksheet.table) {
 					i = -1, l = worksheet[0].length;
-					s = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="', 
-						id, '" name="Table', id, '" displayName="Table', id,'" ref="A1:', alphabet[worksheet[0].length - 1], worksheet.length, '" totalsRowShown="0"><autoFilter ref="A1:',
-						alphabet[worksheet[0].length - 1], worksheet.length, '"/><tableColumns count="', worksheet[0].length, '">'];
-					while (++i < l) { s.push('<tableColumn id="' + (i + 1) + '" name="' + worksheet[0][i] + '"/>'); }
-					s.push('</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>');
+					s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="'
+						+ id + '" name="Table' + id + '" displayName="Table' + id + '" ref="A1:' + alphabet(worksheet[0].length - 1) + worksheet.length
+						+ '" totalsRowShown="0"><autoFilter ref="A1:' + alphabet(worksheet[0].length - 1) + worksheet.length + '"/><tableColumns count="' + worksheet[0].length + '">';
+					while (++i < l) { s += '<tableColumn id="' + (i + 1) + '" name="' + worksheet[0][i] + '"/>'; }
+					s += '</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
 					
-					xl.folder('tables').file('table' + id + '.xml', s.join(''));
+					xl.folder('tables').file('table' + id + '.xml', s);
 					xlWorksheets.folder('_rels').file('sheet' + id + '.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table' + id + '.xml"/></Relationships>');
 					contentTypes[1].unshift('<Override PartName="/xl/tables/table' + id + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>');
 				}
@@ -146,33 +138,30 @@ function xlsx(file) { // v1.0.1
 				worksheets.unshift('<sheet name="' + (worksheet.name || 'Sheet' + id) + '" sheetId="' + id + '" r:id="rId' + id + '"/>');
 			}
 			//{ [Content_Types].xml
-			zip.file('[Content_Types].xml', ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
-				contentTypes[0].join(''),
-				'<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>',
-				contentTypes[1].join(''),
-				'<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>'].join(''));
+				zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+					+ contentTypes[0].join('') + '<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>'
+					+ contentTypes[1].join('') + '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>');
 			//}
 			//{ docProps/app.xml
-				docProps.file('app.xml', ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>XLSX.js</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop><HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Worksheets</vt:lpstr></vt:variant><vt:variant><vt:i4>',
-					file.worksheets.length, '</vt:i4></vt:variant></vt:vector></HeadingPairs><TitlesOfParts><vt:vector size="', props.length, '" baseType="lpstr"><vt:lpstr>', props.join('</vt:lpstr><vt:lpstr>'),
-					'</vt:lpstr></vt:vector></TitlesOfParts><Manager>Stephen Hardy</Manager><Company>Microsoft Corporation</Company><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>1.0</AppVersion></Properties>'].join(''));
+				docProps.file('app.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>XLSX.js</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop><HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Worksheets</vt:lpstr></vt:variant><vt:variant><vt:i4>'
+					+ file.worksheets.length + '</vt:i4></vt:variant></vt:vector></HeadingPairs><TitlesOfParts><vt:vector size="' + props.length + '" baseType="lpstr"><vt:lpstr>' + props.join('</vt:lpstr><vt:lpstr>')
+					+ '</vt:lpstr></vt:vector></TitlesOfParts><Manager></Manager><Company>Microsoft Corporation</Company><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>1.0</AppVersion></Properties>');
 			//}
 			//{ xl/_rels/workbook.xml.rels
-				xl.folder('_rels').file('workbook.xml.rels', ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
-					xlRels.join(''),
-					'<Relationship Id="rId' + (xlRels.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>',
-					'<Relationship Id="rId' + (xlRels.length + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
-					'<Relationship Id="rId' + (xlRels.length + 3) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/></Relationships>'].join(''));
+				xl.folder('_rels').file('workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+					+ xlRels.join('') + '<Relationship Id="rId' + (xlRels.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>'
+					+ '<Relationship Id="rId' + (xlRels.length + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+					+ '<Relationship Id="rId' + (xlRels.length + 3) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/></Relationships>');
 			//}
 			//{ xl/sharedStrings.xml
-				xl.file('sharedStrings.xml', ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="',
-					sharedStrings[1], '" uniqueCount="', sharedStrings[0].length, '"><si><t>', sharedStrings[0].join('</t></si><si><t>'), '</t></si></sst>'].join(''));
+				xl.file('sharedStrings.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'
+					+ sharedStrings[1] + '" uniqueCount="' + sharedStrings[0].length + '"><si><t>' + sharedStrings[0].join('</t></si><si><t>') + '</t></si></sst>');
 			//}
 			//{ xl/workbook.xml
-				xl.file('workbook.xml', ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
-					'<fileVersion appName="xl" lastEdited="5" lowestEdited="5" rupBuild="9303"/><workbookPr defaultThemeVersion="124226"/><bookViews><workbookView ', 
-					(file.activeWorksheet ? 'activeTab="' + file.activeWorksheet + '" ' : ''), 'xWindow="480" yWindow="60" windowWidth="18195" windowHeight="8505"/></bookViews><sheets>', 
-					worksheets.join(''), '</sheets><calcPr calcId="145621"/></workbook>'].join(''));
+				xl.file('workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+					+ '<fileVersion appName="xl" lastEdited="5" lowestEdited="5" rupBuild="9303"/><workbookPr defaultThemeVersion="124226"/><bookViews><workbookView '
+					+ (file.activeWorksheet ? 'activeTab="' + file.activeWorksheet + '" ' : '') + 'xWindow="480" yWindow="60" windowWidth="18195" windowHeight="8505"/></bookViews><sheets>'
+					+ worksheets.join('') + '</sheets><calcPr calcId="145621"/></workbook>');
 			//}
 		//}
 		processTime = +new Date() - processTime;

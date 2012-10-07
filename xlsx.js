@@ -104,7 +104,7 @@ function xlsx(file) { // v1.1.0
 						s += '<row r="' + (i + 1) + '" spans="1:' + k + '" x14ac:dyDescent="0.25">';
 						while (++j < k) {
 							t = worksheet[i][j];
-							if (t && parseInt(t, 10).toString() === 'NaN') { // If value is text, place a sharedString reference instead of the value (use parseInt because +emptyString === 0)
+							if (t && isNaN(parseFloat(t)) || !isFinite(t)) { // If value is text, place a sharedString reference instead of the value (use parseInt because +emptyString === 0)
 								sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 								index = sharedStrings[0].indexOf(t);
 								if (index < 0) { index = sharedStrings[0].push(t) - 1; }

@@ -12,8 +12,10 @@ function xlsx(file) { 'use strict'; // v2.0.0
 	function convertDate(input) { return typeof input === 'object' ? ((input - new Date(1900, 0, 0)) / 86400000) + 1 : new Date(+new Date(1900, 0, 0) + (input - 1) * 86400000); }
 	function typeOf(obj) { return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase(); }
 	function getAttr(s, n) { s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"')); }
-	
-	if (typeof file === 'string') { // Load
+    // see http://www.w3.org/TR/xml/#syntax
+    function escapeXmlMarkup(s) { return (''+s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); }
+
+    if (typeof file === 'string') { // Load
 		zipTime = Date.now();
 		zip = zip.load(file, { base64: true });
 		result = { worksheets: [], zipTime: Date.now() - zipTime };
@@ -128,6 +130,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 						while (++j < k) {
 							cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; style = cell.formatCode !== 'General' ? cell.formatCode : '';
 							if (val && typeof val === 'string' && !isFinite(val)) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
+                                val = escapeXmlMarkup(val);
 								sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 								index = sharedStrings[0].indexOf(val);
 								if (index < 0) { index = sharedStrings[0].push(val) - 1; }
@@ -163,9 +166,9 @@ function xlsx(file) { 'use strict'; // v2.0.0
 				}
 				
 				contentTypes[0].unshift('<Override PartName="/xl/worksheets/sheet' + id + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
-				props.unshift(worksheet.name || 'Sheet' + id);
+				props.unshift(escapeXmlMarkup(worksheet.name) || 'Sheet' + id);
 				xlRels.unshift('<Relationship Id="rId' + id + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + id + '.xml"/>');
-				worksheets.unshift('<sheet name="' + (worksheet.name || 'Sheet' + id) + '" sheetId="' + id + '" r:id="rId' + id + '"/>');
+				worksheets.unshift('<sheet name="' + (escapeXmlMarkup(worksheet.name) || 'Sheet' + id) + '" sheetId="' + id + '" r:id="rId' + id + '"/>');
 			}
 			
 			//{ xl/styles.xml

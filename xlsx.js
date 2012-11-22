@@ -23,14 +23,14 @@ function xlsx(file) { 'use strict'; // v2.0.0
 		
 		//{ Process sharedStrings
 			sharedStrings = [];
-			if (zip.files['xl/sharedStrings.xml']) {
-				s = zip.files['xl/sharedStrings.xml'].data.split('<t>'); i = s.length;
+			if (zip.file('xl/sharedStrings.xml').asText()) {
+				s = zip.file('xl/sharedStrings.xml').asText().split('<t>'); i = s.length;
 				while(--i) { sharedStrings[i - 1] = s[i].substring(0, s[i].indexOf('<')); } // Do not process i === 0, because s[0] is the text before first t element
 			}
 		//}
 		
 		//{ Get file info from "docProps/core.xml"
-			s = zip.files['docProps/core.xml'].data;
+			s = zip.file('docProps/core.xml').asText();
 			s = s.substr(s.indexOf('<dc:creator>') + 12);
 			result.creator = s.substring(0, s.indexOf('</dc:creator>'));
 			s = s.substr(s.indexOf('<cp:lastModifiedBy>') + 19);
@@ -41,7 +41,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 			result.modified = new Date(s.substring(0, s.indexOf('</dcterms:modified>')));
 		//}
 		//{ Get workbook info from "xl/workbook.xml" - Worksheet names exist in other places, but "activeTab" attribute must be gathered from this file anyway
-			s = zip.files['xl/workbook.xml'].data; index = s.indexOf('activeTab="');
+			s = zip.file('xl/workbook.xml').asText(); index = s.indexOf('activeTab="');
 			if (index > 0) {
 				s = s.substr(index + 11); // Must eliminate first 11 characters before finding the index of " on the next line. Otherwise, it finds the " before the value.
 				result.activeWorksheet = +s.substring(0, s.indexOf('"'));
@@ -55,7 +55,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 		//}
 		//{ Get style info from "xl/styles.xml"
 			styles = [];
-			s = zip.files['xl/styles.xml'].data.split('<numFmt '); i = s.length;
+			s = zip.file('xl/styles.xml').asText().split('<numFmt '); i = s.length;
 			while (--i) { t = s[i]; numFmts[+getAttr(t, 'numFmtId')] = getAttr(t, 'formatCode'); }
 			s = s[s.length - 1]; s = s.substr(s.indexOf('cellXfs')).split('<xf '); i = s.length;
 			while (--i) { 
@@ -70,7 +70,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 		//{ Get worksheet info from "xl/worksheets/sheetX.xml"
 			i = result.worksheets.length;
 			while (i--) {
-				s = zip.files['xl/worksheets/sheet' + (i + 1) + '.xml'].data.split('<row ');
+				s = zip.file('xl/worksheets/sheet' + (i + 1) + '.xml' ).asText().split('<row ');
 				w = result.worksheets[i];
 				w.table = s[0].indexOf('<tableParts ') > 0;
 				w = w.data;

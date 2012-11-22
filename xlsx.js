@@ -127,7 +127,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 						s += '<row r="' + (i + 1) + '" spans="1:' + k + '" x14ac:dyDescent="0.25">';
 						while (++j < k) {
 							cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; style = cell.formatCode !== 'General' ? cell.formatCode : '';
-							if (val && typeof val === 'string' && isNaN(parseFloat(val))) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
+							if (val && typeof val === 'string' && !isFinite(val)) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
 								sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 								index = sharedStrings[0].indexOf(val);
 								if (index < 0) { index = sharedStrings[0].push(val) - 1; }

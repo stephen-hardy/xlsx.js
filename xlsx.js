@@ -12,8 +12,8 @@ function xlsx(file) { 'use strict'; // v2.0.0
 	function convertDate(input) { return typeof input === 'object' ? ((input - new Date(1900, 0, 0)) / 86400000) + 1 : new Date(+new Date(1900, 0, 0) + (input - 1) * 86400000); }
 	function typeOf(obj) { return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase(); }
 	function getAttr(s, n) { s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"')); }
-    // see http://www.w3.org/TR/xml/#syntax
-    function escapeXmlMarkup(s) { return (''+s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); }
+	// see http://www.w3.org/TR/xml/#syntax
+	function escapeXmlMarkup(s) { return (''+s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); }
 
     if (typeof file === 'string') { // Load
 		zipTime = Date.now();

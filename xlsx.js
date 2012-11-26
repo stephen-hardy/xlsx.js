@@ -114,7 +114,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 				+ (file.created || new Date()).toISOString() + '</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">' + (file.modified || new Date()).toISOString() + '</dcterms:modified></cp:coreProperties>');
 		//}
 		//{ Content dependent
-            styles = [,];
+            styles = new Array(1);
 			w = file.worksheets.length;
 			while (w--) { // Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
 				id = w + 1;

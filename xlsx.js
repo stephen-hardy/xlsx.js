@@ -12,8 +12,7 @@ function xlsx(file) { 'use strict'; // v2.0.0
 	function convertDate(input) { return typeof input === 'object' ? ((input - new Date(1900, 0, 0)) / 86400000) + 1 : new Date(+new Date(1900, 0, 0) + (input - 1) * 86400000); }
 	function typeOf(obj) { return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase(); }
 	function getAttr(s, n) { s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"')); }
-	// see http://www.w3.org/TR/xml/#syntax
-	function escapeXmlMarkup(s) { return (''+s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); }
+	function escapeXmlMarkup(s) { return (''+s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); } // see http://www.w3.org/TR/xml/#syntax
 
     if (typeof file === 'string') { // Load
 		zipTime = Date.now();
@@ -22,9 +21,9 @@ function xlsx(file) { 'use strict'; // v2.0.0
 		processTime = Date.now();
 
 		//{ Process sharedStrings
-			sharedStrings = [];
-			if (zip.file('xl/sharedStrings.xml').asText()) {
-				s = zip.file('xl/sharedStrings.xml').asText().split(/<t.*?>/g); i = s.length;
+			sharedStrings = []; s = zip.file('xl/sharedStrings.xml');
+			if (s) {
+				s = s.asText().split(/<t.*?>/g); i = s.length;
 				while(--i) { sharedStrings[i - 1] = s[i].substring(0, s[i].indexOf('</t>')); } // Do not process i === 0, because s[0] is the text before first t element
 			}
 		//}

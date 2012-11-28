@@ -3,7 +3,7 @@
 // Released under the Microsoft Office Extensible File License
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
-function xlsx(file) { 'use strict'; // v2.0.0
+function xlsx(file) { 'use strict'; // v2.1.0
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cell,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',

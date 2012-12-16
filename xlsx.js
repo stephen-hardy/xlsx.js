@@ -3,16 +3,19 @@
 // Released under the Microsoft Office Extensible File License
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
-function xlsx(file) { 'use strict'; // v2.1.0
+function xlsx(file) { 'use strict'; // v2.2.0
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style,
-		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cell,
+		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cell, row,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
-			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'];
-	function alphabet(i) { var s = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', t = Math.floor(i / 26) - 1; return (t > -1 ? alphabet(t) : '') + s.charAt(i % 26); }
+			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
+		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	function numAlpha(i) { var t = Math.floor(i / 26) - 1; return (t > -1 ? numAlpha(t) : '') + alphabet.charAt(i % 26); }
+	function alphaNum(s) { var t = 0; if (s.length === 2) { t = alphaNum(s.charAt(0)) + 1; } return t * 26 + alphabet.indexOf(s.substr(-1)); }
 	function convertDate(input) { return typeof input === 'object' ? ((input - new Date(1900, 0, 0)) / 86400000) + 1 : new Date(+new Date(1900, 0, 0) + (input - 1) * 86400000); }
 	function typeOf(obj) { return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase(); }
 	function getAttr(s, n) { s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"')); }
-	function escapeXmlMarkup(s) { return (''+s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); } // see http://www.w3.org/TR/xml/#syntax
+	function escapeXML(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); } // see http://www.w3.org/TR/xml/#syntax
+	function unescapeXML(s) { return (s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, '\''); }
 
     if (typeof file === 'string') { // Load
 		zipTime = Date.now();
@@ -24,7 +27,7 @@ function xlsx(file) { 'use strict'; // v2.1.0
 			sharedStrings = []; s = zip.file('xl/sharedStrings.xml');
 			if (s) {
 				s = s.asText().split(/<t.*?>/g); i = s.length;
-				while(--i) { sharedStrings[i - 1] = s[i].substring(0, s[i].indexOf('</t>')); } // Do not process i === 0, because s[0] is the text before first t element
+				while(--i) { sharedStrings[i - 1] = unescapeXML(s[i].substring(0, s[i].indexOf('</t>'))); } // Do not process i === 0, because s[0] is the text before first t element
 			}
 		//}
 
@@ -72,24 +75,28 @@ function xlsx(file) { 'use strict'; // v2.1.0
 				s = zip.file('xl/worksheets/sheet' + (i + 1) + '.xml' ).asText().split('<row ');
 				w = result.worksheets[i];
 				w.table = s[0].indexOf('<tableParts ') > 0;
+				t = getAttr(s[0].substr(s[0].indexOf('<dimension')), 'ref');
+				t = t.substr(t.indexOf(':') + 1);
+				w.maxCol = alphaNum(t.match(/[a-zA-Z]*/g)[0]) + 1;
+				w.maxRow = +t.match(/\d*/g).join('');
 				w = w.data;
 				j = s.length;
 				while (--j) { // Don't process j === 0, because s[0] is the text before the first row element
-					w.unshift([]);
+					row = w[+getAttr(s[j], 'r') - 1] = [];
 					columns = s[j].split('<c ');
 					k = columns.length;
 					while (--k) { // Don't process l === 0, because k[0] is the text before the first c (cell) element
 						cell = columns[k];
 						f = styles[+getAttr(cell, 's')] || { type: 'General', formatCode: 'General' };
 						t = getAttr(cell, 't') || f.type;
-						cell = cell.substring(cell.indexOf('<v>') + 3, cell.indexOf('</v>'));
-						cell = cell ? +cell : ''; // turn non-zero into number
+						val = cell.substring(cell.indexOf('<v>') + 3, cell.indexOf('</v>'));
+						val = val ? +val : ''; // turn non-zero into number
 						switch (t) {
-							case 's': cell = sharedStrings[cell]; break;
-							case 'b': cell = cell === 1; break;
-							case 'date': cell = convertDate(cell); break;
+							case 's': val = sharedStrings[val]; break;
+							case 'b': val = val === 1; break;
+							case 'date': val = convertDate(val); break;
 						}
-						w[0].unshift({ value: cell, formatCode: f.formatCode });
+						row[alphaNum(getAttr(cell, 'r').match(/[a-zA-Z]*/g)[0])] = { value: val, formatCode: f.formatCode };
 					}
 				}
 			}
@@ -120,17 +127,17 @@ function xlsx(file) { 'use strict'; // v2.1.0
 				//{ Generate sheetX.xml in var s
 					worksheet = file.worksheets[w]; data = worksheet.data;
 					s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
-						+ '<dimension ref="A1:' + alphabet(data[0].length - 1) + data.length + '"/><sheetViews><sheetView ' + (w === file.activeWorksheet ? 'tabSelected="1" ' : '')
+						+ '<dimension ref="A1:' + numAlpha(data[0].length - 1) + data.length + '"/><sheetViews><sheetView ' + (w === file.activeWorksheet ? 'tabSelected="1" ' : '')
 						+ ' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/><sheetData>';
 
 					i = -1; l = data.length;
 					while (++i < l) {
 						j = -1; k = data[i].length;
-						s += '<row r="' + (i + 1) + '" spans="1:' + k + '" x14ac:dyDescent="0.25">';
+						s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 						while (++j < k) {
 							cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; style = cell.formatCode !== 'General' ? cell.formatCode : '';
 							if (val && typeof val === 'string' && !isFinite(val)) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
-                                val = escapeXmlMarkup(val);
+                                val = escapeXML(val);
 								sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 								index = sharedStrings[0].indexOf(val);
 								if (index < 0) { index = sharedStrings[0].push(val) - 1; }
@@ -144,7 +151,8 @@ function xlsx(file) { 'use strict'; // v2.1.0
 								if (index < 0) { style = styles.push(style) - 1; }
 								else { style = index; }
 							}
-							s += '<c r="' + alphabet(j) + (i + 1) + '"' + (style ? ' s="' + style + '"' : '') + (t ? ' t="' + t + '"' : '') + '><v>' + val + '</v></c>';
+							s += '<c r="' + numAlpha(j) + (i + 1) + '"' + (style ? ' s="' + style + '"' : '') + (t ? ' t="' + t + '"' : '') + '>'
+								+ (cell.formula ? '<f>' + cell.formula + '</f>' : '') + '<v>' + val + '</v></c>';
 						}
 						s += '</row>';
 					}
@@ -154,7 +162,7 @@ function xlsx(file) { 'use strict'; // v2.1.0
 				//}
 
 				if (worksheet.table) {
-					i = -1; l = data[0].length; t = alphabet(data[0].length - 1) + data.length;
+					i = -1; l = data[0].length; t = numAlpha(data[0].length - 1) + data.length;
 					s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
 						+ '" name="Table' + id + '" displayName="Table' + id + '" ref="A1:' + t + '" totalsRowShown="0"><autoFilter ref="A1:' + t + '"/><tableColumns count="' + data[0].length + '">';
 					while (++i < l) { s += '<tableColumn id="' + (i + 1) + '" name="' + data[0][i] + '"/>'; }
@@ -166,9 +174,9 @@ function xlsx(file) { 'use strict'; // v2.1.0
 				}
 
 				contentTypes[0].unshift('<Override PartName="/xl/worksheets/sheet' + id + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
-				props.unshift(escapeXmlMarkup(worksheet.name) || 'Sheet' + id);
+				props.unshift(escapeXML(worksheet.name) || 'Sheet' + id);
 				xlRels.unshift('<Relationship Id="rId' + id + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + id + '.xml"/>');
-				worksheets.unshift('<sheet name="' + (escapeXmlMarkup(worksheet.name) || 'Sheet' + id) + '" sheetId="' + id + '" r:id="rId' + id + '"/>');
+				worksheets.unshift('<sheet name="' + (escapeXML(worksheet.name) || 'Sheet' + id) + '" sheetId="' + id + '" r:id="rId' + id + '"/>');
 			}
 
 			//{ xl/styles.xml

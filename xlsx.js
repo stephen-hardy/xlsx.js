@@ -1,3 +1,8 @@
+var JSZip = null
+if (typeof require === 'function') {
+	JSZip = require('node-zip');
+}
+
 //----------------------------------------------------------
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Released under the Microsoft Office Extensible File License
@@ -232,4 +237,9 @@ function xlsx(file) { 'use strict'; // v2.2.0
 		};
 	}
 	return result;
+}
+
+// NodeJs export
+if (typeof exports === 'object' && typeof module === 'object') {
+  module.exports = xlsx;
 }

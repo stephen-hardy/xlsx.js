@@ -1,5 +1,5 @@
 {
-  "name": "xlsx.js",
+  "name": "xlsxjs",
   "version": "2.2.0",
   "author": "Stephen Hardy",
   "description": "Convert data in base64 XLSX files into JavaScript objects - and back!",

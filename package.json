@@ -27,7 +27,7 @@
   },
   "main": "xlsx.js",
   "dependencies": {
-    "node-zip": "0.0.2"
+    "node-zip": "https://github.com/feugy/node-zip/archive/master.tar.gz"
   },  
   "devDependencies": {
     "mocha": "1.8.1",

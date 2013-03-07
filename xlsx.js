@@ -4,7 +4,7 @@
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
 function xlsx(file) { 'use strict'; // v2.2.0
-	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style,
+	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, strings, styles, index, data, val, style,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cell, row,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
@@ -17,7 +17,7 @@ function xlsx(file) { 'use strict'; // v2.2.0
 	function escapeXML(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); } // see http://www.w3.org/TR/xml/#syntax
 	function unescapeXML(s) { return (s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, '\''); }
 
-    if (typeof file === 'string') { // Load
+	if (typeof file === 'string') { // Load
 		zipTime = Date.now();
 		zip = zip.load(file, { base64: true });
 		result = { worksheets: [], zipTime: Date.now() - zipTime };
@@ -26,8 +26,16 @@ function xlsx(file) { 'use strict'; // v2.2.0
 		//{ Process sharedStrings
 			sharedStrings = []; s = zip.file('xl/sharedStrings.xml');
 			if (s) {
-				s = s.asText().split(/<t.*?>/g); i = s.length;
-				while(--i) { sharedStrings[i - 1] = unescapeXML(s[i].substring(0, s[i].indexOf('</t>'))); } // Do not process i === 0, because s[0] is the text before first t element
+				s = s.asText().split(/<si.*?>/g);
+				i = s.length;
+				while(--i) {
+					strings = s[i].substring(0, s[i].indexOf('</si>')).split(/<t.*?>/g);
+					j = strings.length;
+					sharedStrings[i - 1] = '';
+					while(--j) {
+						sharedStrings[i - 1] += unescapeXML(strings[j].substring(0, strings[j].indexOf('</t>')));
+					} // Do not process j === 0, because strings[0] is the text before first t element
+				} // Do not process i === 0, because s[0] is the text before first si element
 			}
 		//}
 

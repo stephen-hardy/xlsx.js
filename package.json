@@ -27,16 +27,15 @@
   },
   "main": "xlsx.js",
   "dependencies": {
-    "node-zip": "https://github.com/feugy/node-zip/archive/master.tar.gz"
+    "node-zip": "1.0.1"
   },  
   "devDependencies": {
-    "mocha": "1.8.1",
+    "mocha": "1.8.2",
     "chai": "1.5.0",
     "fs-extra": "0.5.0"
   },
   "license": "Microsoft Office Extensible File License",
   "scripts": {
-    "test": "mocha -R spec",
-    "preinstall": "npm install -g mocha"
+    "test": "mocha -R spec"
   }
 }

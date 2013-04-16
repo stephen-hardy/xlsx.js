@@ -11,7 +11,10 @@ if (typeof require === 'function') {
 function xlsx(file) { 
 	'use strict'; // v2.3.0
 
-	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex,
+	var defaultFontName = 'Calibri';
+	var defaultFontSize = 11;
+
+	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
@@ -160,6 +163,7 @@ function xlsx(file) {
 		// Content dependent
     styles = new Array(1);
     borders = new Array(1);
+    fonts = new Array(1);
 		w = file.worksheets.length;
 		while (w--) { 
 			// Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
@@ -174,10 +178,14 @@ function xlsx(file) {
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; 
-					// supported styles: borders, hAlign and formatCode
+					// supported styles: borders, hAlign, formatCode and font style
 					style = {
 						borders: cell.borders, 
 						hAlign: cell.hAlign,
+						bold: cell.bold,
+						italic: cell.italic,
+						fontName: cell.fontName,
+						fontSize: cell.fontSize,
 						formatCode: cell.formatCode || 'General'
 					};
 					if (val && typeof val === 'string' && !isFinite(val)) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
@@ -268,6 +276,8 @@ function xlsx(file) {
 		while (--i) { 
 			// Don't process index 0, already added
 			style = JSON.parse(styles[i]);
+
+			// cell formating, refer to it if necessary
 			if (style.formatCode !== 'General') {
 				index = numFmts.indexOf(style.formatCode);
 				if (index < 0) { 
@@ -278,6 +288,8 @@ function xlsx(file) {
 			} else {
 				style.formatCode = 0
 			}
+
+			// border declaration: add a new declaration and refer to it in style
 			borderIndex = 0
 			if (style.borders) {
 				border = ['<border>']
@@ -295,14 +307,48 @@ function xlsx(file) {
 					}
 				}
 				border.push('</border>');
-				borderIndex = borders.push(border.join('')) - 1;
+				border = border.join('');
+				// try to reuse existing border
+				borderIndex = borders.indexOf(border);
+				if (borderIndex < 0) {
+					borderIndex = borders.push(border) - 1;
+				}
 			}
-			styles[i] = ['<xf borderId="', borderIndex, '" fillId="0" fontId="0" xfId="0" numFmtId="',
+
+			// font declaration: add a new declaration and refer to it in style
+			fontIndex = 0
+			if (style.bold || style.italic || style.fontSize || style.fontName) {
+				font = ['<font>']
+				if (style.bold) {
+					font.push('<b/>');
+				}
+				if (style.italic) {
+					font.push('<i/>');
+				}
+				font.push('<sz val="', style.fontSize || defaultFontSize, '"/>');
+				font.push('<color theme="1"/>');
+				font.push('<name val="', style.fontName || defaultFontName, '"/>');
+				font.push('<family val="2"/>', '</font>');
+				font = font.join('');
+				// try to reuse existing font
+				fontIndex = fonts.indexOf(font);
+				if (fontIndex < 0) {
+					fontIndex = fonts.push(font) - 1;
+				}
+			}
+
+			// declares style, and refer to optionnal formatCode, font and borders
+			styles[i] = ['<xf xfId="0" fillId="0" borderId="', 
+				borderIndex, 
+				'" fontId="',
+				fontIndex,
+				'" numFmtId="',
 				style.formatCode,
 				'" ',
 				(style.hAlign ? 'applyAlignment="1" ' : ' '),
 				(style.formatCode > 0 ? 'applyNumberFormat="1" ' : ' '),
 				(borderIndex > 0 ? 'applyBorder="1" ' : ' '),
+				(fontIndex > 0 ? 'applyFont="1" ' : ' '),
 				'>'
 			];
 			if (style.hAlign) {
@@ -314,8 +360,8 @@ function xlsx(file) {
 		t = t.length ? '<numFmts count="' + t.length + '">' + t.join('') + '</numFmts>' : '';
 
 		xl.file('styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
-			+ t + '<fonts count="1" x14ac:knownFonts="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/>'
-			+ '<scheme val="minor"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+			+ t + '<fonts count="'+ fonts.length + '" x14ac:knownFonts="1"><font><sz val="' + defaultFontSize + '"/><color theme="1"/><name val="' + defaultFontName + '"/><family val="2"/>'
+			+ '<scheme val="minor"/></font>' + fonts.join('') + '</fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
 			+ '<borders count="' + borders.length + '"><border><left/><right/><top/><bottom/><diagonal/></border>'
 			+ borders.join('') + '</borders><cellStyleXfs count="1">'
 			+ '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + styles.length + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'

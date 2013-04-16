@@ -9,10 +9,10 @@ if (typeof require === 'function') {
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
 function xlsx(file) { 
-	'use strict'; // v2.2.0
+	'use strict'; // v2.3.0
 
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style,
-		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cell, row,
+		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
 		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -165,10 +165,8 @@ function xlsx(file) {
 			id = w + 1;
 			// Generate sheetX.xml in var s
 			worksheet = file.worksheets[w]; data = worksheet.data;
-			s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
-				+ '<dimension ref="A1:' + numAlpha(data[0].length - 1) + data.length + '"/><sheetViews><sheetView ' + (w === file.activeWorksheet ? 'tabSelected="1" ' : '')
-				+ ' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/><sheetData>';
-
+			s = '';
+			columns = [];
 			i = -1; l = data.length;
 			while (++i < l) {
 				j = -1; k = data[i].length;
@@ -179,6 +177,7 @@ function xlsx(file) {
                             val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 						index = sharedStrings[0].indexOf(val);
+						colWidth = val.length;
 						if (index < 0) {
 						 	index = sharedStrings[0].push(val) - 1; 
 						}
@@ -186,8 +185,10 @@ function xlsx(file) {
 						t = 's';
 					} else if (typeof val === 'boolean') { 
 						val = (val ? 1 : 0); t = 'b'; 
+						colWidth = 1;
 					} else if (typeOf(val) === 'date') { 
 						val = convertDate(val); style = style || 'mm-dd-yy'; 
+						colWidth = val.length;
 					}
 					if (style) {
 						index = styles.indexOf(style);
@@ -197,12 +198,37 @@ function xlsx(file) {
 							style = index; 
 						}
 					}
+					// keeps largest cell in column, and autoWidth flag that may be set on any cell
+					if (columns[j] == null) {
+						columns[j] = {autoWidth: false, max:0};
+					}
+					if (cell.autoWidth) {
+						columns[j].autoWidth = true
+					}
+					if (colWidth > columns[j].max) {
+						columns[j].max = colWidth;
+					}
 					s += '<c r="' + numAlpha(j) + (i + 1) + '"' + (style ? ' s="' + style + '"' : '') + (t ? ' t="' + t + '"' : '') + '>'
 						+ (cell.formula ? '<f>' + cell.formula + '</f>' : '') + '<v>' + val + '</v></c>';
 				}
 				s += '</row>';
 			}
-			s += '</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
+
+			cols = ['<cols>'];
+			for (i = 0; i < columns.length; i++) {
+				if (columns[i].autoWidth) {
+					cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="1"/>');
+				}
+			}
+			cols.push('</cols>');
+
+			s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
+				+ '<dimension ref="A1:' + numAlpha(data[0].length - 1) + data.length + '"/><sheetViews><sheetView ' + (w === file.activeWorksheet ? 'tabSelected="1" ' : '')
+				+ ' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/>'
+				+ cols.join('')
+				+ '<sheetData>'
+				+ s 
+				+ '</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
 			if (worksheet.table) { 
 				s += '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>'; 
 			}
@@ -213,7 +239,7 @@ function xlsx(file) {
 				s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
 					+ '" name="Table' + id + '" displayName="Table' + id + '" ref="A1:' + t + '" totalsRowShown="0"><autoFilter ref="A1:' + t + '"/><tableColumns count="' + data[0].length + '">';
 				while (++i < l) { 
-					s += '<tableColumn id="' + (i + 1) + '" name="' + data[0][i] + '"/>'; 
+					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[0][i].hasOwnProperty('value') ? data[0][i].value : data[0][i]) + '"/>'; 
 				}
 				s += '</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
 

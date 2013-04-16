@@ -22,7 +22,7 @@ describe('XlsX.js unit tests', function() {
       lastModifiedBy: 'Meg White',
       worksheets: [{
         data: [
-          ['green', 'white', 'orange', 'blue', 'red'],
+          ['green', 'white', {value:'orange', autoWidth:true}, 'blue', 'red'],
           ['1', '2', '3', '4', '5']
         ],
         table: true,
@@ -85,4 +85,4 @@ describe('XlsX.js unit tests', function() {
     });
   })
 
-});xlsx
+});

@@ -11,7 +11,7 @@ if (typeof require === 'function') {
 function xlsx(file) { 
 	'use strict'; // v2.3.0
 
-	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style,
+	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
@@ -159,6 +159,7 @@ function xlsx(file) {
 
 		// Content dependent
     styles = new Array(1);
+    borders = new Array(1);
 		w = file.worksheets.length;
 		while (w--) { 
 			// Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
@@ -277,13 +278,32 @@ function xlsx(file) {
 			} else {
 				style.formatCode = 0
 			}
-			styles[i] = ['<xf borderId="0" fillId="0" fontId="0" xfId="0" ',
-				(style.formatCode > 0 ? 'applyNumberFormat="1"' : ''),
-				' numFmtId="',
+			borderIndex = 0
+			if (style.borders) {
+				border = ['<border>']
+				// order is significative
+				for (var edge in {left:0, right:0, top:0, bottom:0, diagonal:0}) {
+					if (style.borders[edge]) {
+						var color = style.borders[edge];
+						// add transparency if missing
+						if (color.length === 6) {
+							color = 'FF'+color;
+						}
+						border.push('<', edge, ' style="thin">', '<color rgb="', style.borders[edge], '"/></', edge, '>');
+					} else {
+						border.push('<', edge, '/>');
+					}
+				}
+				border.push('</border>');
+				borderIndex = borders.push(border.join('')) - 1;
+			}
+			styles[i] = ['<xf borderId="', borderIndex, '" fillId="0" fontId="0" xfId="0" numFmtId="',
 				style.formatCode,
 				'" ',
-				(style.hAlign ? 'applyAlignment="1"' : ''),
-				' >'
+				(style.hAlign ? 'applyAlignment="1" ' : ' '),
+				(style.formatCode > 0 ? 'applyNumberFormat="1" ' : ' '),
+				(borderIndex > 0 ? 'applyBorder="1" ' : ' '),
+				'>'
 			];
 			if (style.hAlign) {
 				styles[i].push('<alignment horizontal="', style.hAlign, '"/>');
@@ -296,7 +316,8 @@ function xlsx(file) {
 		xl.file('styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
 			+ t + '<fonts count="1" x14ac:knownFonts="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/>'
 			+ '<scheme val="minor"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
-			+ '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1">'
+			+ '<borders count="' + borders.length + '"><border><left/><right/><top/><bottom/><diagonal/></border>'
+			+ borders.join('') + '</borders><cellStyleXfs count="1">'
 			+ '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + styles.length + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
 			+ styles.join('') + '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/>'
 			+ '<tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>'

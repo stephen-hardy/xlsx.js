@@ -23,7 +23,7 @@ describe('XlsX.js unit tests', function() {
       worksheets: [{
         data: [
           ['green', 'white', {value:'orange', autoWidth:true}, 'blue', 'red'],
-          [{formatCode: '0.00', value:'1'}, {hAlign:'center', value:'2'}, '3', '4', '5']
+          [{formatCode: '0.00', value:'1'}, {hAlign:'center', value:'2', borders:{bottom:'DEE31D'}}, {value:'3', borders:{bottom:64}}, '4', '5']
         ],
         table: true,
         name: 'Sheet 1'

@@ -172,7 +172,13 @@ function xlsx(file) {
 				j = -1; k = data[i].length;
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
-					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; style = cell.formatCode !== 'General' ? cell.formatCode : '';
+					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; 
+					// supported styles: borders, hAlign and formatCode
+					style = {
+						borders: cell.borders, 
+						hAlign: cell.hAlign,
+						formatCode: cell.formatCode || 'General'
+					};
 					if (val && typeof val === 'string' && !isFinite(val)) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
                             val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
@@ -187,16 +193,18 @@ function xlsx(file) {
 						val = (val ? 1 : 0); t = 'b'; 
 						colWidth = 1;
 					} else if (typeOf(val) === 'date') { 
-						val = convertDate(val); style = style || 'mm-dd-yy'; 
+						val = convertDate(val); 
+						style.formatCode = cell.formatCode || 'mm-dd-yy'; 
 						colWidth = val.length;
 					}
-					if (style) {
-						index = styles.indexOf(style);
-						if (index < 0) { 
-							style = styles.push(style) - 1; 
-						} else { 
-							style = index; 
-						}
+					
+					// use stringified version as unic and reproductible style signature
+					style = JSON.stringify(style);
+					index = styles.indexOf(style);
+					if (index < 0) { 
+						style = styles.push(style) - 1; 
+					} else { 
+						style = index; 
 					}
 					// keeps largest cell in column, and autoWidth flag that may be set on any cell
 					if (columns[j] == null) {
@@ -256,12 +264,35 @@ function xlsx(file) {
 
 		// xl/styles.xml
 		i = styles.length; t = [];
-		while (--i) { // Don't process index 0, already added
-			index = numFmts.indexOf(styles[i]);
-			if (index < 0) { index = 164 + t.length; t.push('<numFmt formatCode="' + styles[i] + '" numFmtId="' + index + '"/>'); }
-			styles[i] = '<xf numFmtId="' + index + '" borderId="0" fillId="0" fontId="0" xfId="0" applyNumberFormat="1"/>';
+		while (--i) { 
+			// Don't process index 0, already added
+			style = JSON.parse(styles[i]);
+			if (style.formatCode !== 'General') {
+				index = numFmts.indexOf(style.formatCode);
+				if (index < 0) { 
+					index = 164 + t.length; 
+					t.push('<numFmt formatCode="' + style.formatCode + '" numFmtId="' + index + '"/>'); 
+				}
+				style.formatCode = index
+			} else {
+				style.formatCode = 0
+			}
+			styles[i] = ['<xf borderId="0" fillId="0" fontId="0" xfId="0" ',
+				(style.formatCode > 0 ? 'applyNumberFormat="1"' : ''),
+				' numFmtId="',
+				style.formatCode,
+				'" ',
+				(style.hAlign ? 'applyAlignment="1"' : ''),
+				' >'
+			];
+			if (style.hAlign) {
+				styles[i].push('<alignment horizontal="', style.hAlign, '"/>');
+			}
+			styles[i].push('</xf>');
+			styles[i] = styles[i].join('');
 		}
 		t = t.length ? '<numFmts count="' + t.length + '">' + t.join('') + '</numFmts>' : '';
+
 		xl.file('styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
 			+ t + '<fonts count="1" x14ac:knownFonts="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/>'
 			+ '<scheme val="minor"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'

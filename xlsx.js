@@ -15,7 +15,7 @@ function xlsx(file) {
 	var defaultFontSize = 11;
 
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
-		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row,
+		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row, merges, merged,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
 		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -172,6 +172,7 @@ function xlsx(file) {
 			worksheet = file.worksheets[w]; data = worksheet.data;
 			s = '';
 			columns = [];
+    	merges = [];
 			i = -1; l = data.length;
 			while (++i < l) {
 				j = -1; k = data[i].length;
@@ -188,8 +189,9 @@ function xlsx(file) {
 						fontSize: cell.fontSize,
 						formatCode: cell.formatCode || 'General'
 					};
-					if (val && typeof val === 'string' && !isFinite(val)) { // If value is string, and not string of just a number, place a sharedString reference instead of the value
-                            val = escapeXML(val);
+					if (val && typeof val === 'string' && !isFinite(val)) { 
+						// If value is string, and not string of just a number, place a sharedString reference instead of the value
+            val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 						index = sharedStrings[0].indexOf(val);
 						colWidth = val.length;
@@ -205,6 +207,10 @@ function xlsx(file) {
 						val = convertDate(val); 
 						style.formatCode = cell.formatCode || 'mm-dd-yy'; 
 						colWidth = val.length;
+					} else if (typeof val === 'object') {
+						// unsupported value
+						val = null
+						colWidth = 0;
 					}
 					
 					// use stringified version as unic and reproductible style signature
@@ -225,27 +231,71 @@ function xlsx(file) {
 					if (colWidth > columns[j].max) {
 						columns[j].max = colWidth;
 					}
-					s += '<c r="' + numAlpha(j) + (i + 1) + '"' + (style ? ' s="' + style + '"' : '') + (t ? ' t="' + t + '"' : '') + '>'
-						+ (cell.formula ? '<f>' + cell.formula + '</f>' : '') + '<v>' + val + '</v></c>';
+					// store merges if needed and add missing cells. Cannot have rowSpan AND colSpan
+					if (cell.colSpan > 1) {
+						// horizontal merge. ex: B12:E12. Add missing cells (with same attribute but value) to current row
+						merges.push([numAlpha(j) + (i + 1), numAlpha(j+cell.colSpan-1) + (i + 1)]);
+						merged = [j, 0]
+						for (var m = 0; m < cell.colSpan-1; m++) {
+							merged.push(cell);
+						}
+						data[i].splice.apply(data[i], merged);
+						k += cell.colSpan-1;
+					} else if (cell.rowSpan > 1) {
+						// vertical merge. ex: B12:B15. Add missing cells (with same attribute but value) to next columns
+						for (var m = 1; m < cell.rowSpan; m++) {
+							if (data[i+m]) {
+								data[i+m].splice(j, 0, cell)
+							} else {
+								// readh the end of data
+								cell.rowSpan = m;
+								break;
+							}
+						}
+						merges.push([numAlpha(j) + (i + 1), numAlpha(j) + (i + cell.rowSpan)]);
+					}
+					if (cell.rowSpan > 1 ||cell.colSpan > 1) {
+						// deletes value, rowSpan and colSpan from cell to avoid refering it from copied cells
+						delete cell.value;
+						delete cell.rowSpan;
+						delete cell.colSpan;
+					}
+					s += '<c r="' + numAlpha(j) + (i + 1) + '"' + (style ? ' s="' + style + '"' : '') + (t ? ' t="' + t + '"' : '');
+					if (val != null) {
+						s += '>' + (cell.formula ? '<f>' + cell.formula + '</f>' : '') + '<v>' + val + '</v></c>';
+					} else {
+						s += '/>';
+					}
 				}
 				s += '</row>';
 			}
 
-			cols = ['<cols>'];
+			cols = []
 			for (i = 0; i < columns.length; i++) {
 				if (columns[i].autoWidth) {
 					cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="1"/>');
 				}
 			}
-			cols.push('</cols>');
+			// only add cols definition if not empty
+			if (cols.length > 0) {
+				cols = ['<cols>'].concat(cols, ['</cols>']).join('');
+			}
 
 			s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
 				+ '<dimension ref="A1:' + numAlpha(data[0].length - 1) + data.length + '"/><sheetViews><sheetView ' + (w === file.activeWorksheet ? 'tabSelected="1" ' : '')
 				+ ' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/>'
-				+ cols.join('')
+				+ cols
 				+ '<sheetData>'
 				+ s 
-				+ '</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
+				+ '</sheetData>';
+			if (merges.length > 0) {
+				s += '<mergeCells count="' + merges.length + '">';
+				for (i = 0; i < merges.length; i++) {
+					s += '<mergeCell ref="' + merges[i].join(':') + '"/>';
+				}
+				s += '</mergeCells>';
+			}
+			s += '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
 			if (worksheet.table) { 
 				s += '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>'; 
 			}

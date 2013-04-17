@@ -183,6 +183,7 @@ function xlsx(file) {
 					style = {
 						borders: cell.borders, 
 						hAlign: cell.hAlign,
+						vAlign: cell.vAlign,
 						bold: cell.bold,
 						italic: cell.italic,
 						fontName: cell.fontName,
@@ -395,14 +396,21 @@ function xlsx(file) {
 				'" numFmtId="',
 				style.formatCode,
 				'" ',
-				(style.hAlign ? 'applyAlignment="1" ' : ' '),
+				(style.hAlign || style.vAlign? 'applyAlignment="1" ' : ' '),
 				(style.formatCode > 0 ? 'applyNumberFormat="1" ' : ' '),
 				(borderIndex > 0 ? 'applyBorder="1" ' : ' '),
 				(fontIndex > 0 ? 'applyFont="1" ' : ' '),
 				'>'
 			];
-			if (style.hAlign) {
-				styles[i].push('<alignment horizontal="', style.hAlign, '"/>');
+			if (style.hAlign || style.vAlign) {
+				styles[i].push('<alignment');
+				if (style.hAlign) {
+					styles[i].push(' horizontal="', style.hAlign, '"');
+				}
+				if (style.vAlign) {
+					styles[i].push(' vertical="', style.vAlign, '"');
+				}
+				styles[i].push('/>');
 			}
 			styles[i].push('</xf>');
 			styles[i] = styles[i].join('');

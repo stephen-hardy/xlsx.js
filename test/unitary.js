@@ -44,7 +44,7 @@ describe('XlsX.js unit tests', function() {
         data: [
           ['merge test'],
           ['A1', {colSpan:3, value:'B1'}, 'E1'],
-          [{rowSpan: 3, value:'A2'}, 'B2', 'C2', 'D2', 'E2'],
+          [{rowSpan: 3, value:'A2', vAlign: 'center', hAlign: 'center'}, 'B2', 'C2', 'D2', 'E2'],
           ['B3', 'C3', 'D3', 'E3']
         ],
         name: 'Sheet 3'

@@ -190,6 +190,7 @@ function xlsx(file) {
 						fontSize: cell.fontSize,
 						formatCode: cell.formatCode || 'General'
 					};
+					colWidth = 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
             val = escapeXML(val);
@@ -211,7 +212,9 @@ function xlsx(file) {
 					} else if (typeof val === 'object') {
 						// unsupported value
 						val = null
-						colWidth = 0;
+					} else {
+						// number, or string which is a number 
+						colWidth = (''+val).length;
 					}
 					
 					// use stringified version as unic and reproductible style signature

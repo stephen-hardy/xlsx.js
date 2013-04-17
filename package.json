@@ -1,0 +1,41 @@
+{
+  "name": "xlsx.js",
+  "version": "2.3.0",
+  "author": "Stephen Hardy",
+  "description": "Convert data in base64 XLSX files into JavaScript objects - and back!",
+  "contributors": [ 
+    {
+      "name": "Damien Feugas",
+      "email": "damien.feugas@gmail.com"
+    } 
+  ],
+  "keywords": [
+    "xls",
+    "xlsx",
+    "convert",
+    "translate",
+    "generate",
+    "serialize",
+    "marshal"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stephen-hardy/xlsx.js"
+  },
+  "engine": { 
+    "node": ">=0.8.1"
+  },
+  "main": "xlsx.js",
+  "dependencies": {
+    "node-zip": "1.0.1"
+  },  
+  "devDependencies": {
+    "mocha": "1.8.2",
+    "chai": "1.5.0",
+    "fs-extra": "0.5.0"
+  },
+  "license": "Microsoft Office Extensible File License",
+  "scripts": {
+    "test": "mocha -R spec"
+  }
+}

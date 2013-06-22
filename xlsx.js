@@ -41,10 +41,12 @@ function xlsx(file) {
 	}
 	
 	function escapeXML(s) { 
+		if (s && !s.replace) s =""+s;
 		return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); 
 	} // see http://www.w3.org/TR/xml/#syntax
 	
 	function unescapeXML(s) { 
+		if (s && !s.replace) s =""+s;
 		return (s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, '\''); 
 	}
 
@@ -180,16 +182,22 @@ function xlsx(file) {
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; 
 					// supported styles: borders, hAlign, formatCode and font style
-					style = {
-						borders: cell.borders, 
-						hAlign: cell.hAlign,
-						vAlign: cell.vAlign,
-						bold: cell.bold,
-						italic: cell.italic,
-						fontName: cell.fontName,
-						fontSize: cell.fontSize,
-						formatCode: cell.formatCode || 'General'
-					};
+					if (typeof cell === "object") {
+						style = {
+							borders: cell.borders, 
+							hAlign: cell.hAlign,
+							vAlign: cell.vAlign,
+							bold: cell.bold,
+							italic: cell.italic,
+							fontName: cell.fontName,
+							fontSize: cell.fontSize,
+							formatCode: cell.formatCode || 'General'
+						};
+					} else {
+						style = {
+							formatCode: "General"
+						}
+					}
 					colWidth = 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value

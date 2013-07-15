@@ -180,7 +180,9 @@ function xlsx(file) {
 				j = -1; k = data[i].length;
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
-					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; 
+					try {
+					cell = data[i][j]; val = (cell.hasOwnProperty('value') ? cell.value : cell); t = ''; 
+					} catch (e) { continue; }
 					// supported styles: borders, hAlign, formatCode and font style
 					if (typeof cell === "object") {
 						style = {

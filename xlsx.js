@@ -29,7 +29,10 @@ function xlsx(file) {
 	}
 
 	function convertDate(input) { 
-		return typeof input === 'object' ? ((input - new Date(1900, 0, 0)) / 86400000) + 1 : new Date(+new Date(1900, 0, 0) + (input - 1) * 86400000); 
+		var d = new Date(1900, 0, 0);
+    		var isDateObject = typeof input === 'object';
+    		var offset = ((isDateObject ? input.getTimezoneOffset() : (new Date()).getTimezoneOffset()) - d.getTimezoneOffset()) * 60000;
+    		return isDateObject ? ((input - d - offset ) / 86400000) + 1 : new Date(+d - offset + (input - 1) * 86400000);
 	}
 
 	function typeOf(obj) {

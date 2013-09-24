@@ -1,6 +1,5 @@
-var JSZip = null
-if (typeof require === 'function') {
-	JSZip = require('node-zip');
+if ((typeof JSZip === 'undefined' || !JSZip) && typeof require === 'function') {
+	var JSZip = require('node-zip');
 }
 
 //----------------------------------------------------------
@@ -9,7 +8,7 @@ if (typeof require === 'function') {
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
 function xlsx(file) { 
-	'use strict'; // v2.3.0
+	'use strict'; // v2.3.1
 
 	var defaultFontName = 'Calibri';
 	var defaultFontSize = 11;

@@ -1,25 +1,25 @@
-if ((typeof JSZip === 'undefined' || !JSZip) && typeof require === 'function') {
-	var JSZip = require('node-zip');
-}
-
 //----------------------------------------------------------
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Released under the Microsoft Office Extensible File License
 // https://raw.github.com/stephen-hardy/xlsx.js/master/LICENSE.txt
 //----------------------------------------------------------
-function xlsx(file) { 
-	'use strict'; // v2.3.1
 
-	var defaultFontName = 'Calibri';
-	var defaultFontSize = 11;
+if ((typeof JSZip === 'undefined' || !JSZip) && typeof require === 'function') {
+	var JSZip = require('node-zip');
+}
+
+function xlsx(file) { 
+	'use strict'; // v2.3.2
 
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row, merges, merged,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
-		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+		defaultFontName = 'Calibri',
+		defaultFontSize = 11;
 
-	function numAlpha(i) { 
+	function numAlpha(i) {
 		var t = Math.floor(i / 26) - 1; return (t > -1 ? numAlpha(t) : '') + alphabet.charAt(i % 26); 
 	}
 
@@ -27,11 +27,11 @@ function xlsx(file) {
 		var t = 0; if (s.length === 2) { t = alphaNum(s.charAt(0)) + 1; } return t * 26 + alphabet.indexOf(s.substr(-1)); 
 	}
 
-	function convertDate(input) { 
-		var d = new Date(1900, 0, 0);
-    		var isDateObject = typeof input === 'object';
-    		var offset = ((isDateObject ? input.getTimezoneOffset() : (new Date()).getTimezoneOffset()) - d.getTimezoneOffset()) * 60000;
-    		return isDateObject ? ((input - d - offset ) / 86400000) + 1 : new Date(+d - offset + (input - 1) * 86400000);
+	function convertDate(input) {
+		var d = new Date(1900, 0, 0),
+			isDateObject = typeof input === 'object',
+			offset = ((isDateObject ? input.getTimezoneOffset() : (new Date()).getTimezoneOffset()) - d.getTimezoneOffset()) * 60000;
+		return isDateObject ? ((input - d - offset ) / 86400000) + 1 : new Date(+d - offset + (input - 1) * 86400000);
 	}
 
 	function typeOf(obj) {
@@ -42,73 +42,59 @@ function xlsx(file) {
 		s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"')); 
 	}
 	
-	function escapeXML(s) { 
-		return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;'); 
-	} // see http://www.w3.org/TR/xml/#syntax
+	function escapeXML(s) { return typeof s === 'string' ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;') : ''; }
 	
-	function unescapeXML(s) { 
-		return (s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, '\''); 
-	}
+	function unescapeXML(s) { return typeof s === 'string' ? s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, '\'') : ''; }
 
-   if (typeof file === 'string') { 
-   	// Load
+   if (typeof file === 'string') { // Load
 		zipTime = Date.now();
 		zip = zip.load(file, { base64: true });
 		result = { worksheets: [], zipTime: Date.now() - zipTime };
 		processTime = Date.now();
+		sharedStrings = [];
+		styles = [];
 
-		// Process sharedStrings
-		sharedStrings = []; s = zip.file('xl/sharedStrings.xml');
-		if (s) {
+		if (s = zip.file('xl/sharedStrings.xml')) { // Process sharedStrings
 			s = s.asText().split(/<t.*?>/g); i = s.length;
 			while(--i) { sharedStrings[i - 1] = unescapeXML(s[i].substring(0, s[i].indexOf('</t>'))); } // Do not process i === 0, because s[0] is the text before first t element
 		}
-
-		// Get file info from "docProps/core.xml"
-		s = zip.file('docProps/core.xml').asText();
-		s = s.substr(s.indexOf('<dc:creator>') + 12);
-		result.creator = s.substring(0, s.indexOf('</dc:creator>'));
-		s = s.substr(s.indexOf('<cp:lastModifiedBy>') + 19);
-		result.lastModifiedBy = s.substring(0, s.indexOf('</cp:lastModifiedBy>'));
-		s = s.substr(s.indexOf('<dcterms:created xsi:type="dcterms:W3CDTF">') + 43);
-		result.created = new Date(s.substring(0, s.indexOf('</dcterms:created>')));
-		s = s.substr(s.indexOf('<dcterms:modified xsi:type="dcterms:W3CDTF">') + 44);
-		result.modified = new Date(s.substring(0, s.indexOf('</dcterms:modified>')));
-
-		// Get workbook info from "xl/workbook.xml" - Worksheet names exist in other places, but "activeTab" attribute must be gathered from this file anyway
-		s = zip.file('xl/workbook.xml').asText(); index = s.indexOf('activeTab="');
-		if (index > 0) {
-			s = s.substr(index + 11); 
-			// Must eliminate first 11 characters before finding the index of " on the next line. Otherwise, it finds the " before the value.
-			result.activeWorksheet = +s.substring(0, s.indexOf('"'));
-		} else { 
-			result.activeWorksheet = 0; 
+		if (s = zip.file('docProps/core.xml')) { // Get file info from "docProps/core.xml"
+			s = s.asText();
+			s = s.substr(s.indexOf('<dc:creator>') + 12);
+			result.creator = s.substring(0, s.indexOf('</dc:creator>'));
+			s = s.substr(s.indexOf('<cp:lastModifiedBy>') + 19);
+			result.lastModifiedBy = s.substring(0, s.indexOf('</cp:lastModifiedBy>'));
+			s = s.substr(s.indexOf('<dcterms:created xsi:type="dcterms:W3CDTF">') + 43);
+			result.created = new Date(s.substring(0, s.indexOf('</dcterms:created>')));
+			s = s.substr(s.indexOf('<dcterms:modified xsi:type="dcterms:W3CDTF">') + 44);
+			result.modified = new Date(s.substring(0, s.indexOf('</dcterms:modified>')));
 		}
-		s = s.split('<sheet '); i = s.length;
-		while (--i) { // Do not process i === 0, because s[0] is the text before the first sheet element
-			id = s[i].substr(s[i].indexOf('name="') + 6);
-			result.worksheets.unshift({ name: id.substring(0, id.indexOf('"')), data: [] });
-		}
-
-		// Get style info from "xl/styles.xml"
-		styles = [];
-		s = zip.file('xl/styles.xml').asText().split('<numFmt '); i = s.length;
-		while (--i) { 
-			t = s[i]; numFmts[+getAttr(t, 'numFmtId')] = getAttr(t, 'formatCode'); 
-		}
-		s = s[s.length - 1]; s = s.substr(s.indexOf('cellXfs')).split('<xf '); i = s.length;
-		while (--i) {
-			id = getAttr(s[i], 'numFmtId'); f = numFmts[id];
-			if (f.indexOf('m') > -1) {
-				t = 'date'; 
-			} else if (f.indexOf('0') > -1) { 
-				t = 'number'; 
-			} else if (f === '@') { 
-				t = 'string'; 
+		if (s = zip.file('xl/workbook.xml')) { // Get workbook info from "xl/workbook.xml" - Worksheet names exist in other places, but "activeTab" attribute must be gathered from this file anyway
+			s = s.asText(); index = s.indexOf('activeTab="');
+			if (index > 0) {
+				s = s.substr(index + 11); // Must eliminate first 11 characters before finding the index of " on the next line. Otherwise, it finds the " before the value.
+				result.activeWorksheet = +s.substring(0, s.indexOf('"'));
 			} else { 
-				t = 'unknown'; 
+				result.activeWorksheet = 0; 
 			}
-			styles.unshift({ formatCode: f, type: t });
+			s = s.split('<sheet '); i = s.length;
+			while (--i) { // Do not process i === 0, because s[0] is the text before the first sheet element
+				id = s[i].substr(s[i].indexOf('name="') + 6);
+				result.worksheets.unshift({ name: id.substring(0, id.indexOf('"')), data: [] });
+			}
+		}
+		if (s = zip.file('xl/styles.xml')) { // Get style info from "xl/styles.xml"
+			s = s.asText().split('<numFmt '); i = s.length;
+			while (--i) { t = s[i]; numFmts[+getAttr(t, 'numFmtId')] = getAttr(t, 'formatCode'); }
+			s = s[s.length - 1]; s = s.substr(s.indexOf('cellXfs')).split('<xf '); i = s.length;
+			while (--i) {
+				id = getAttr(s[i], 'numFmtId'); f = numFmts[id];
+				if (f.indexOf('m') > -1) { t = 'date'; }
+				else if (f.indexOf('0') > -1) { t = 'number'; }
+				else if (f === '@') { t = 'string'; }
+				else { t = 'unknown'; }
+				styles.unshift({ formatCode: f, type: t });
+			}
 		}
 
 		// Get worksheet info from "xl/worksheets/sheetX.xml"
@@ -144,9 +130,8 @@ function xlsx(file) {
 		}
 
 		result.processTime = Date.now() - processTime;
-
-	} else {
-		// Save
+	}
+	else { // Save
 		processTime = Date.now();
 		sharedStrings = [[], 0];
 		// Fully static
@@ -163,9 +148,10 @@ function xlsx(file) {
 			+ (file.created || new Date()).toISOString() + '</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">' + (file.modified || new Date()).toISOString() + '</dcterms:modified></cp:coreProperties>');
 
 		// Content dependent
-    styles = new Array(1);
-    borders = new Array(1);
-    fonts = new Array(1);
+		styles = new Array(1);
+		borders = new Array(1);
+		fonts = new Array(1);
+		
 		w = file.worksheets.length;
 		while (w--) { 
 			// Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
@@ -174,15 +160,14 @@ function xlsx(file) {
 			worksheet = file.worksheets[w]; data = worksheet.data;
 			s = '';
 			columns = [];
-    	merges = [];
+			merges = [];
 			i = -1; l = data.length;
 			while (++i < l) {
 				j = -1; k = data[i].length;
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
-					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = ''; 
-					// supported styles: borders, hAlign, formatCode and font style
-					style = {
+					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = '';
+					style = { // supported styles: borders, hAlign, formatCode and font style
 						borders: cell.borders, 
 						hAlign: cell.hAlign,
 						vAlign: cell.vAlign,
@@ -195,7 +180,7 @@ function xlsx(file) {
 					colWidth = 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
-            val = escapeXML(val);
+						val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 						index = sharedStrings[0].indexOf(val);
 						colWidth = val.length;
@@ -204,39 +189,28 @@ function xlsx(file) {
 						}
 						val = index;
 						t = 's';
-					} else if (typeof val === 'boolean') { 
+					}
+					else if (typeof val === 'boolean') { 
 						val = (val ? 1 : 0); t = 'b'; 
 						colWidth = 1;
-					} else if (typeOf(val) === 'date') { 
+					}
+					else if (typeOf(val) === 'date') { 
 						val = convertDate(val); 
 						style.formatCode = cell.formatCode || 'mm-dd-yy'; 
 						colWidth = val.length;
-					} else if (typeof val === 'object') {
-						// unsupported value
-						val = null
-					} else {
-						// number, or string which is a number 
-						colWidth = (''+val).length;
 					}
+					else if (typeof val === 'object') { val = null; } // unsupported value
+					else { colWidth = (''+val).length; } // number, or string which is a number
 					
 					// use stringified version as unic and reproductible style signature
 					style = JSON.stringify(style);
 					index = styles.indexOf(style);
-					if (index < 0) { 
-						style = styles.push(style) - 1; 
-					} else { 
-						style = index; 
-					}
+					if (index < 0) { style = styles.push(style) - 1; }
+					else { style = index; }
 					// keeps largest cell in column, and autoWidth flag that may be set on any cell
-					if (columns[j] == null) {
-						columns[j] = {autoWidth: false, max:0};
-					}
-					if (cell.autoWidth) {
-						columns[j].autoWidth = true
-					}
-					if (colWidth > columns[j].max) {
-						columns[j].max = colWidth;
-					}
+					if (columns[j] == null) { columns[j] = { autoWidth: false, max:0 }; }
+					if (cell.autoWidth) { columns[j].autoWidth = true; }
+					if (colWidth > columns[j].max) { columns[j].max = colWidth; }
 					// store merges if needed and add missing cells. Cannot have rowSpan AND colSpan
 					if (cell.colSpan > 1) {
 						// horizontal merge. ex: B12:E12. Add missing cells (with same attribute but value) to current row
@@ -469,7 +443,4 @@ function xlsx(file) {
 	return result;
 }
 
-// NodeJs export
-if (typeof exports === 'object' && typeof module === 'object') {
-  module.exports = xlsx;
-}
+if (typeof exports === 'object' && typeof module === 'object') { module.exports = xlsx; } // NodeJs export

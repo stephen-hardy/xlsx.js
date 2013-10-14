@@ -164,7 +164,20 @@ function xlsx(file) {
 			i = -1; l = data.length;
 			while (++i < l) {
 				j = -1; k = data[i].length;
-				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
+
+		                //Work out if we need to insert a custom height to this row
+		                var maxHeight = -1,
+		                    heightXML;
+		
+		                while (++j < k) {
+		                    cell = data[i][j];
+		                    maxHeight = Math.max(cell.height || -1, maxHeight);
+		                }
+		                j = -1;
+		                heightXML = (maxHeight > -1 ? 'ht="' + maxHeight + '" customHeight="1"' : '');
+		
+		                s += '<row r="' + (i + 1) + '" ' + heightXML + ' x14ac:dyDescent="0.25">';
+                
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = '';
 					style = { // supported styles: borders, hAlign, formatCode and font style

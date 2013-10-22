@@ -157,7 +157,7 @@ function xlsx(file) {
 			// Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
 			id = w + 1;
 			// Generate sheetX.xml in var s
-			worksheet = file.worksheets[w]; data = worksheet.data;
+			worksheet = file.worksheets[w]; data = worksheet.data; data_validation = worksheet.data_validation;
 			s = '';
 			columns = [];
 			merges = [];
@@ -249,7 +249,24 @@ function xlsx(file) {
 				}
 				s += '</row>';
 			}
-
+			//data validation
+			r = '';
+			validations = []
+			n = -1; o = data_validation.length;
+			while (++n < q) {
+				o = -1; p = data_validation[n].length;
+				console.log(n,q,o,p);
+				while (++o < p) {
+					valid = data_validation[n][o]; 
+					val = valid.hasOwnProperty('value') ? valid.value : valid; u = ''; 
+					type = valid.error_type || "information"; 
+					title = valid.error_title || "Error"; 
+					message = valid.error_message || "";
+					source = valid.source || "";
+					validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(o)+ (n+1) +'"><formula1>'+source+'</formula1></dataValidation>');
+				}
+			}
+			
 			cols = []
 			for (i = 0; i < columns.length; i++) {
 				if (columns[i].autoWidth) {
@@ -274,6 +291,14 @@ function xlsx(file) {
 					s += '<mergeCell ref="' + merges[i].join(':') + '"/>';
 				}
 				s += '</mergeCells>';
+			}
+			//add in the validation
+			if (validations.length > 0) {
+				s += '<dataValidations count="'+validations.length+'">';
+				for (i = 0; i < validations.length; i++) {
+					s += validations[i];
+				}
+				s += '</dataValidations>';
 			}
 			s += '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
 			if (worksheet.table) { 

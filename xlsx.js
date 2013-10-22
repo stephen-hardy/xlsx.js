@@ -271,26 +271,28 @@ function xlsx(file) {
 				s += '</row>';
 			}
 			//data validation
-			r = '';
-			validations = []
-			n = -1; o = data_validation.length;
-			while (++n < o) {
-				p = -1; q = data_validation[n].length;
-				while (++p < q) {
-					valid = data_validation[n][p]; 
-					val = valid.hasOwnProperty('value') ? valid.value : valid;
-					type = valid.error_type || "information";
-					title = valid.error_title || "Error"; 
-					message = valid.error_message || "";
-					criteria = valid.criteria || "";
-					source = valid.source || "";
-					if (["list","custom"].indexOf(valid.type) != -1) validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+source+'</formula1></dataValidation>');
+			if(data_validation) {
+				r = '';
+				validations = []
+				n = -1; o = data_validation.length;
+				while (++n < o) {
+					p = -1; q = data_validation[n].length;
+					while (++p < q) {
+						valid = data_validation[n][p]; 
+						val = valid.hasOwnProperty('value') ? valid.value : valid;
+						type = valid.error_type || "information";
+						title = valid.error_title || "Error"; 
+						message = valid.error_message || "";
+						criteria = valid.criteria || "";
+						source = valid.source || "";
+						if (["list","custom"].indexOf(valid.type) != -1) validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+source+'</formula1></dataValidation>');
 					
-					else if (["whole","decimal","date","time","length"].indexOf(valid.type) != -1) {
-						if (["between","notBetween"].indexOf(criteria) != -1) validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" operator="'+convertCriteria(criteria)+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+valid.minimum+'</formula1><formula2>'+valid.maximum+'</formula2></dataValidation>');
-						else  validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" operator="'+convertCriteria(criteria)+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+val+'</formula1></dataValidation>');
+						else if (["whole","decimal","date","time","length"].indexOf(valid.type) != -1) {
+							if (["between","notBetween"].indexOf(criteria) != -1) validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" operator="'+convertCriteria(criteria)+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+valid.minimum+'</formula1><formula2>'+valid.maximum+'</formula2></dataValidation>');
+							else  validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" operator="'+convertCriteria(criteria)+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+val+'</formula1></dataValidation>');
+						}
+						else validations.push('<dataValidation errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"></dataValidation>');
 					}
-					else validations.push('<dataValidation errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"></dataValidation>');
 				}
 			}
 			
@@ -312,6 +314,9 @@ function xlsx(file) {
 				+ '<sheetData>'
 				+ s 
 				+ '</sheetData>';
+			if (worksheet.protected) {
+				s += '<sheetProtection password="8053" sheet="true" objects="false" scenarios="false" formatCells="false" formatColumns="false" formatRows="false" insertColumns="false" insertRows="false" insertHyperlinks="false" deleteColumns="false" deleteRows="false" selectLockedCells="false" sort="false" autoFilter="false" pivotTables="false" selectUnlockedCells="false"/>'
+			}
 			if (merges.length > 0) {
 				s += '<mergeCells count="' + merges.length + '">';
 				for (i = 0; i < merges.length; i++) {

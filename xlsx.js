@@ -271,9 +271,9 @@ function xlsx(file) {
 				s += '</row>';
 			}
 			//data validation
+			validations = []
 			if(data_validation) {
 				r = '';
-				validations = []
 				n = -1; o = data_validation.length;
 				while (++n < o) {
 					p = -1; q = data_validation[n].length;

@@ -201,7 +201,6 @@ function xlsx(file) {
 					}
 					else if (typeof val === 'object') { val = null; } // unsupported value
 					else { colWidth = colWidth ||  (''+val).length; } // number, or string which is a number
-					console.log(colWidth);
 					// use stringified version as unic and reproductible style signature
 					style = JSON.stringify(style);
 					index = styles.indexOf(style);
@@ -211,7 +210,6 @@ function xlsx(file) {
 					if (columns[j] == null) { columns[j] = { autoWidth: false, max:0 }; }
 					if (cell.autoWidth) { columns[j].autoWidth = true; }
 					if (colWidth > columns[j].max) { columns[j].max = colWidth; }
-					console.log('max:', columns[j].max );
 					// store merges if needed and add missing cells. Cannot have rowSpan AND colSpan
 					if (cell.colSpan > 1) {
 						// horizontal merge. ex: B12:E12. Add missing cells (with same attribute but value) to current row

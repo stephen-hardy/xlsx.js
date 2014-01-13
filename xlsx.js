@@ -177,13 +177,13 @@ function xlsx(file) {
 						fontSize: cell.fontSize,
 						formatCode: cell.formatCode || 'General'
 					};
-					colWidth = 0;
+					colWidth = cell.width || 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
 						val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 						index = sharedStrings[0].indexOf(val);
-						colWidth = val.length;
+						colWidth = colWidth || val.length;
 						if (index < 0) {
 						 	index = sharedStrings[0].push(val) - 1; 
 						}
@@ -192,16 +192,16 @@ function xlsx(file) {
 					}
 					else if (typeof val === 'boolean') { 
 						val = (val ? 1 : 0); t = 'b'; 
-						colWidth = 1;
+						colWidth = colWidth || 1;
 					}
 					else if (typeOf(val) === 'date') { 
 						val = convertDate(val); 
 						style.formatCode = cell.formatCode || 'mm-dd-yy'; 
-						colWidth = val.length;
+						colWidth = colWidth || val.length;
 					}
 					else if (typeof val === 'object') { val = null; } // unsupported value
-					else { colWidth = (''+val).length; } // number, or string which is a number
-					
+					else { colWidth = colWidth ||  (''+val).length; } // number, or string which is a number
+					console.log(colWidth);
 					// use stringified version as unic and reproductible style signature
 					style = JSON.stringify(style);
 					index = styles.indexOf(style);
@@ -211,6 +211,7 @@ function xlsx(file) {
 					if (columns[j] == null) { columns[j] = { autoWidth: false, max:0 }; }
 					if (cell.autoWidth) { columns[j].autoWidth = true; }
 					if (colWidth > columns[j].max) { columns[j].max = colWidth; }
+					console.log('max:', columns[j].max );
 					// store merges if needed and add missing cells. Cannot have rowSpan AND colSpan
 					if (cell.colSpan > 1) {
 						// horizontal merge. ex: B12:E12. Add missing cells (with same attribute but value) to current row
@@ -252,9 +253,7 @@ function xlsx(file) {
 
 			cols = []
 			for (i = 0; i < columns.length; i++) {
-				if (columns[i].autoWidth) {
-					cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="1"/>');
-				}
+				cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="', columns[i].autowidth?'1':'0'. '"/>');
 			}
 			// only add cols definition if not empty
 			if (cols.length > 0) {

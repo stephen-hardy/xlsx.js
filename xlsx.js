@@ -175,7 +175,8 @@ function xlsx(file) {
 						italic: cell.italic,
 						fontName: cell.fontName,
 						fontSize: cell.fontSize,
-						formatCode: cell.formatCode || 'General'
+						formatCode: cell.formatCode || 'General',
+						wrapText: cell.wrapText
 					};
 					colWidth = cell.width || 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
@@ -251,7 +252,7 @@ function xlsx(file) {
 
 			cols = []
 			for (i = 0; i < columns.length; i++) {
-				cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="', columns[i].autowidth?'1':'0'. '"/>');
+				cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="', columns[i].autowidth?'1':'0', '"/>');
 			}
 			// only add cols definition if not empty
 			if (cols.length > 0) {
@@ -372,19 +373,22 @@ function xlsx(file) {
 				'" numFmtId="',
 				style.formatCode,
 				'" ',
-				(style.hAlign || style.vAlign? 'applyAlignment="1" ' : ' '),
+				(style.hAlign || style.vAlign || style.wrapText ? 'applyAlignment="1" ' : ' '),
 				(style.formatCode > 0 ? 'applyNumberFormat="1" ' : ' '),
 				(borderIndex > 0 ? 'applyBorder="1" ' : ' '),
 				(fontIndex > 0 ? 'applyFont="1" ' : ' '),
 				'>'
 			];
-			if (style.hAlign || style.vAlign) {
+			if (style.hAlign || style.vAlign || style.wrapText) {
 				styles[i].push('<alignment');
 				if (style.hAlign) {
 					styles[i].push(' horizontal="', style.hAlign, '"');
 				}
 				if (style.vAlign) {
 					styles[i].push(' vertical="', style.vAlign, '"');
+				}
+				if (style.wrapText) {
+					styles[i].push(' wrapText="1"');
 				}
 				styles[i].push('/>');
 			}

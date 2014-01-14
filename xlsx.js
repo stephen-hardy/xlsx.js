@@ -280,13 +280,18 @@ function xlsx(file) {
 			xlWorksheets.file('sheet' + id + '.xml', s + '</worksheet>');
 
 			if (worksheet.table) {
-				i = -1; l = data[0].length; t = numAlpha(data[0].length - 1) + data.length;
-				s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
-					+ '" name="Table' + id + '" displayName="Table' + id + '" ref="A1:' + t + '" totalsRowShown="0"><autoFilter ref="A1:' + t + '"/><tableColumns count="' + data[0].length + '">';
-				while (++i < l) { 
-					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[0][i].hasOwnProperty('value') ? data[0][i].value : data[0][i]) + '"/>'; 
+				if (typeof worksheet.table !== 'object'){
+					worksheet.table={topLeftRow: 0, topLeftColumn: 0, style: 'TableStyleMedium2', showRowStripes: true, showColumnStripes: false};
 				}
-				s += '</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
+				var tc=worksheet.table.topLeftColumn||0, tr=worksheet.table.topLeftRow||0, topLeft=numAlpha(tc)+(tr + 1);
+				i = tc-1; l = data[tr].length; t = numAlpha(data[tr].length - 1) + data.length;
+				s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
+					+ '" name="Table' + id + '" displayName="Table' + id + '" ref="'+ topLeft +':' + t + 
+					'" totalsRowShown="0"><autoFilter ref="'+ topLeft +':' + t + '"/><tableColumns count="' + data[tr].length + '">';
+				while (++i < l) {
+					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[tr][i].hasOwnProperty('value') ? data[tr][i].value : data[tr][i]) + '"/>'; 
+				}
+				s += '</tableColumns><tableStyleInfo name="'+(worksheet.table.style||'TableStyleMedium2')+'" showFirstColumn="0" showLastColumn="0" showRowStripes="'+(worksheet.table.showRowStripes?1:0)+'" showColumnStripes="'+(worksheet.table.showColumnStripes?1:0)+'"/></table>';
 
 				xl.folder('tables').file('table' + id + '.xml', s);
 				xlWorksheets.folder('_rels').file('sheet' + id + '.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table' + id + '.xml"/></Relationships>');

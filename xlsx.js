@@ -169,8 +169,8 @@ function xlsx(file) {
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = '';
-					style = { // supported styles: borders, hAlign, formatCode, font style, wrapping,  background fill
-						borders: cell.borders, 
+					style = { // supported styles: borders, hAlign, formatCode, font style, wrapping,  background fill, font color
+						borders: cell.borders,
 						hAlign: cell.hAlign,
 						vAlign: cell.vAlign,
 						bold: cell.bold,
@@ -179,7 +179,8 @@ function xlsx(file) {
 						fontSize: cell.fontSize,
 						formatCode: cell.formatCode || 'General',
 						wrapText: cell.wrapText,
-						backgroundColor: cell.backgroundColor
+						backgroundColor: cell.backgroundColor,
+						fontColor: cell.fontColor
 					};
 					colWidth = cell.width || 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
@@ -368,7 +369,7 @@ function xlsx(file) {
 
 			// font declaration: add a new declaration and refer to it in style
 			fontIndex = 0
-			if (style.bold || style.italic || style.fontSize || style.fontName) {
+			if (style.bold || style.italic || style.fontSize || style.fontName || style.fontColor) {
 				font = ['<font>']
 				if (style.bold) {
 					font.push('<b/>');
@@ -377,7 +378,16 @@ function xlsx(file) {
 					font.push('<i/>');
 				}
 				font.push('<sz val="', style.fontSize || defaultFontSize, '"/>');
-				font.push('<color theme="1"/>');
+				if (style.fontColor){
+					var color = style.fontColor;
+					// add transparency if missing
+					if (color.length === 6) {
+						color = 'FF'+color;
+					}
+					font.push('<color rgb="',color, '"/>');
+				} else {
+					font.push('<color theme="1"/>');
+				}
 				font.push('<name val="', style.fontName || defaultFontName, '"/>');
 				font.push('<family val="2"/>', '</font>');
 				font = font.join('');

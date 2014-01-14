@@ -12,6 +12,7 @@ function xlsx(file) {
 	'use strict'; // v2.3.2
 
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
+		fill, fills, fillIndex,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row, merges, merged,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
@@ -151,6 +152,7 @@ function xlsx(file) {
 		styles = new Array(1);
 		borders = new Array(1);
 		fonts = new Array(1);
+		fills = new Array();
 		
 		w = file.worksheets.length;
 		while (w--) { 
@@ -167,7 +169,7 @@ function xlsx(file) {
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = '';
-					style = { // supported styles: borders, hAlign, formatCode and font style
+					style = { // supported styles: borders, hAlign, formatCode, font style, wrapping,  background fill
 						borders: cell.borders, 
 						hAlign: cell.hAlign,
 						vAlign: cell.vAlign,
@@ -176,7 +178,8 @@ function xlsx(file) {
 						fontName: cell.fontName,
 						fontSize: cell.fontSize,
 						formatCode: cell.formatCode || 'General',
-						wrapText: cell.wrapText
+						wrapText: cell.wrapText,
+						backgroundColor: cell.backgroundColor
 					};
 					colWidth = cell.width || 0;
 					if (val && typeof val === 'string' && !isFinite(val)) { 
@@ -321,6 +324,21 @@ function xlsx(file) {
 			} else {
 				style.formatCode = 0
 			}
+			
+			// background fill: add a new declaration and refer to it in style
+			fillIndex = 0;
+			if (style.backgroundColor){
+				var color=style.backgroundColor;
+				// add transparency if missing
+				if (color.length === 6) {
+					color = 'FF'+color;
+				}
+				fill = '<fill><patternFill patternType="solid"><fgColor rgb="'+color+'" /><bgColor indexed="64" /></patternFill></fill>';
+				fillIndex= fills.indexOf(fill);
+				if (fillIndex < 0) {
+					fillIndex = fills.push(fill) + 1;
+				}
+			}
 
 			// border declaration: add a new declaration and refer to it in style
 			borderIndex = 0
@@ -371,7 +389,9 @@ function xlsx(file) {
 			}
 
 			// declares style, and refer to optionnal formatCode, font and borders
-			styles[i] = ['<xf xfId="0" fillId="0" borderId="', 
+			styles[i] = ['<xf xfId="0" fillId="',
+			    fillIndex,
+			    '" borderId="', 
 				borderIndex, 
 				'" fontId="',
 				fontIndex,
@@ -404,7 +424,8 @@ function xlsx(file) {
 
 		xl.file('styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
 			+ t + '<fonts count="'+ fonts.length + '" x14ac:knownFonts="1"><font><sz val="' + defaultFontSize + '"/><color theme="1"/><name val="' + defaultFontName + '"/><family val="2"/>'
-			+ '<scheme val="minor"/></font>' + fonts.join('') + '</fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+			+ '<scheme val="minor"/></font>' + fonts.join('') + '</fonts><fills count="' + (2 + fills.length)
+			+ '"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' + fills.join('') + '</fills>'
 			+ '<borders count="' + borders.length + '"><border><left/><right/><top/><bottom/><diagonal/></border>'
 			+ borders.join('') + '</borders><cellStyleXfs count="1">'
 			+ '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + styles.length + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'

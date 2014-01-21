@@ -183,7 +183,7 @@ function xlsx(file) {
 						fontColor: cell.fontColor
 					};
 					colWidth = cell.width || 0;
-					if (val && typeof val === 'string' && !isFinite(val)) { 
+					if (val && typeof val === 'string' && !isFinite(parseFloat(val))) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
 						val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length

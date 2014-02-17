@@ -178,7 +178,7 @@ function xlsx(file) {
 						formatCode: cell.formatCode || 'General'
 					};
 					colWidth = 0;
-					if (val && typeof val === 'string' && !isFinite(val)) { 
+					if ((cell.type && cell.type === 'text') || (val && typeof val === 'string' && !isFinite(val))) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
 						val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length

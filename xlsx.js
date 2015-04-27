@@ -8,7 +8,7 @@ if ((typeof JSZip === 'undefined' || !JSZip) && typeof require === 'function') {
 	var JSZip = require('node-zip');
 }
 
-function xlsx(file) { 
+function xlsx(file) {
 	'use strict'; // v2.3.2
 
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
@@ -20,11 +20,11 @@ function xlsx(file) {
 		defaultFontSize = 11;
 
 	function numAlpha(i) {
-		var t = Math.floor(i / 26) - 1; return (t > -1 ? numAlpha(t) : '') + alphabet.charAt(i % 26); 
+		var t = Math.floor(i / 26) - 1; return (t > -1 ? numAlpha(t) : '') + alphabet.charAt(i % 26);
 	}
 
-	function alphaNum(s) { 
-		var t = 0; if (s.length === 2) { t = alphaNum(s.charAt(0)) + 1; } return t * 26 + alphabet.indexOf(s.substr(-1)); 
+	function alphaNum(s) {
+		var t = 0; if (s.length === 2) { t = alphaNum(s.charAt(0)) + 1; } return t * 26 + alphabet.indexOf(s.substr(-1));
 	}
 
 	function convertDate(input) {
@@ -37,13 +37,13 @@ function xlsx(file) {
 	function typeOf(obj) {
 		return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
 	}
-	
-	function getAttr(s, n) { 
-		s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"')); 
+
+	function getAttr(s, n) {
+		s = s.substr(s.indexOf(n + '="') + n.length + 2); return s.substring(0, s.indexOf('"'));
 	}
-	
+
 	function escapeXML(s) { return typeof s === 'string' ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;') : ''; }
-	
+
 	function unescapeXML(s) { return typeof s === 'string' ? s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, '\'').replace(/&apos;/g, '\'').replace(/&#10;/g, '\n') : ''; }
 
    if (typeof file === 'string') { // Load
@@ -55,7 +55,7 @@ function xlsx(file) {
 		styles = [];
 
 		if (s = zip.file('xl/sharedStrings.xml')) { // Process sharedStrings
-			s = s.asText().split(/<t.*?>/g); i = s.length;
+			s = s.asText().split(/<si>.*?<t.*?>/g); i = s.length;
 			while(--i) { sharedStrings[i - 1] = unescapeXML(s[i].substring(0, s[i].indexOf('</t>'))); } // Do not process i === 0, because s[0] is the text before first t element
 		}
 		if (s = zip.file('docProps/core.xml')) { // Get file info from "docProps/core.xml"
@@ -74,8 +74,8 @@ function xlsx(file) {
 			if (index > 0) {
 				s = s.substr(index + 11); // Must eliminate first 11 characters before finding the index of " on the next line. Otherwise, it finds the " before the value.
 				result.activeWorksheet = +s.substring(0, s.indexOf('"'));
-			} else { 
-				result.activeWorksheet = 0; 
+			} else {
+				result.activeWorksheet = 0;
 			}
 			s = s.split('<sheet '); i = s.length;
 			while (--i) { // Do not process i === 0, because s[0] is the text before the first sheet element
@@ -151,9 +151,9 @@ function xlsx(file) {
 		styles = new Array(1);
 		borders = new Array(1);
 		fonts = new Array(1);
-		
+
 		w = file.worksheets.length;
-		while (w--) { 
+		while (w--) {
 			// Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
 			id = w + 1;
 			// Generate sheetX.xml in var s
@@ -168,7 +168,7 @@ function xlsx(file) {
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = '';
 					style = { // supported styles: borders, hAlign, formatCode and font style
-						borders: cell.borders, 
+						borders: cell.borders,
 						hAlign: cell.hAlign,
 						vAlign: cell.vAlign,
 						bold: cell.bold,
@@ -178,30 +178,30 @@ function xlsx(file) {
 						formatCode: cell.formatCode || 'General'
 					};
 					colWidth = 0;
-					if (val && typeof val === 'string' && !isFinite(val)) { 
+					if (val && typeof val === 'string' && !isFinite(val)) {
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
 						val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 						index = sharedStrings[0].indexOf(val);
 						colWidth = val.length;
 						if (index < 0) {
-						 	index = sharedStrings[0].push(val) - 1; 
+						 	index = sharedStrings[0].push(val) - 1;
 						}
 						val = index;
 						t = 's';
 					}
-					else if (typeof val === 'boolean') { 
-						val = (val ? 1 : 0); t = 'b'; 
+					else if (typeof val === 'boolean') {
+						val = (val ? 1 : 0); t = 'b';
 						colWidth = 1;
 					}
-					else if (typeOf(val) === 'date') { 
-						val = convertDate(val); 
-						style.formatCode = cell.formatCode || 'mm-dd-yy'; 
+					else if (typeOf(val) === 'date') {
+						val = convertDate(val);
+						style.formatCode = cell.formatCode || 'mm-dd-yy';
 						colWidth = val.length;
 					}
 					else if (typeof val === 'object') { val = null; } // unsupported value
 					else { colWidth = (''+val).length; } // number, or string which is a number
-					
+
 					// use stringified version as unic and reproductible style signature
 					style = JSON.stringify(style);
 					index = styles.indexOf(style);
@@ -266,7 +266,7 @@ function xlsx(file) {
 				+ ' workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/>'
 				+ cols
 				+ '<sheetData>'
-				+ s 
+				+ s
 				+ '</sheetData>';
 			if (merges.length > 0) {
 				s += '<mergeCells count="' + merges.length + '">';
@@ -276,8 +276,8 @@ function xlsx(file) {
 				s += '</mergeCells>';
 			}
 			s += '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
-			if (worksheet.table) { 
-				s += '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>'; 
+			if (worksheet.table) {
+				s += '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>';
 			}
 			xlWorksheets.file('sheet' + id + '.xml', s + '</worksheet>');
 
@@ -285,8 +285,8 @@ function xlsx(file) {
 				i = -1; l = data[0].length; t = numAlpha(data[0].length - 1) + data.length;
 				s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
 					+ '" name="Table' + id + '" displayName="Table' + id + '" ref="A1:' + t + '" totalsRowShown="0"><autoFilter ref="A1:' + t + '"/><tableColumns count="' + data[0].length + '">';
-				while (++i < l) { 
-					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[0][i].hasOwnProperty('value') ? data[0][i].value : data[0][i]) + '"/>'; 
+				while (++i < l) {
+					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[0][i].hasOwnProperty('value') ? data[0][i].value : data[0][i]) + '"/>';
 				}
 				s += '</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
 
@@ -303,16 +303,16 @@ function xlsx(file) {
 
 		// xl/styles.xml
 		i = styles.length; t = [];
-		while (--i) { 
+		while (--i) {
 			// Don't process index 0, already added
 			style = JSON.parse(styles[i]);
 
 			// cell formating, refer to it if necessary
 			if (style.formatCode !== 'General') {
 				index = numFmts.indexOf(style.formatCode);
-				if (index < 0) { 
-					index = 164 + t.length; 
-					t.push('<numFmt formatCode="' + style.formatCode + '" numFmtId="' + index + '"/>'); 
+				if (index < 0) {
+					index = 164 + t.length;
+					t.push('<numFmt formatCode="' + style.formatCode + '" numFmtId="' + index + '"/>');
 				}
 				style.formatCode = index
 			} else {
@@ -368,8 +368,8 @@ function xlsx(file) {
 			}
 
 			// declares style, and refer to optionnal formatCode, font and borders
-			styles[i] = ['<xf xfId="0" fillId="0" borderId="', 
-				borderIndex, 
+			styles[i] = ['<xf xfId="0" fillId="0" borderId="',
+				borderIndex,
 				'" fontId="',
 				fontIndex,
 				'" numFmtId="',

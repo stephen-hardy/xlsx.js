@@ -55,8 +55,10 @@ function xlsx(file) {
 		styles = [];
 
 		if (s = zip.file('xl/sharedStrings.xml')) { // Process sharedStrings
-			s = s.asText().split(/<t.*?>/g); i = s.length;
-			while(--i) { sharedStrings[i - 1] = unescapeXML(s[i].substring(0, s[i].indexOf('</t>'))); } // Do not process i === 0, because s[0] is the text before first t element
+			s = s.asText().split(/<si.*?>/g); i = s.length;
+			while(--i) { 
+				sharedStrings[i - 1] = unescapeXML(s[i].replace(/<\/?[^>]+(>|$)/g, '')); 
+			} // Do not process i === 0, because s[0] is the text before first t element
 		}
 		if (s = zip.file('docProps/core.xml')) { // Get file info from "docProps/core.xml"
 			s = s.asText();

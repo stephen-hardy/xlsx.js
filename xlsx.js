@@ -12,6 +12,7 @@ function xlsx(file) {
 	'use strict'; // v2.3.2
 
 	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
+		fill, fills, fillIndex,
 		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row, merges, merged,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
@@ -153,6 +154,7 @@ function xlsx(file) {
 		styles = new Array(1);
 		borders = new Array(1);
 		fonts = new Array(1);
+		fills = new Array();
 		
 		w = file.worksheets.length;
 		while (w--) { 
@@ -169,23 +171,26 @@ function xlsx(file) {
 				s += '<row r="' + (i + 1) + '" x14ac:dyDescent="0.25">';
 				while (++j < k) {
 					cell = data[i][j]; val = cell.hasOwnProperty('value') ? cell.value : cell; t = '';
-					style = { // supported styles: borders, hAlign, formatCode and font style
-						borders: cell.borders, 
+					style = { // supported styles: borders, hAlign, formatCode, font style, wrapping,  background fill, font color
+						borders: cell.borders,
 						hAlign: cell.hAlign,
 						vAlign: cell.vAlign,
 						bold: cell.bold,
 						italic: cell.italic,
 						fontName: cell.fontName,
 						fontSize: cell.fontSize,
-						formatCode: cell.formatCode || 'General'
+						formatCode: cell.formatCode || 'General',
+						wrapText: cell.wrapText,
+						backgroundColor: cell.backgroundColor,
+						fontColor: cell.fontColor
 					};
-					colWidth = 0;
-					if (val && typeof val === 'string' && !isFinite(val)) { 
+					colWidth = cell.width || 0;
+					if (val && typeof val === 'string' && (isNaN(parseFloat(val)) || !isFinite(val) )) { 
 						// If value is string, and not string of just a number, place a sharedString reference instead of the value
 						val = escapeXML(val);
 						sharedStrings[1]++; // Increment total count, unique count derived from sharedStrings[0].length
 						index = sharedStrings[0].indexOf(val);
-						colWidth = val.length;
+						colWidth = colWidth || val.length;
 						if (index < 0) {
 						 	index = sharedStrings[0].push(val) - 1; 
 						}
@@ -194,16 +199,15 @@ function xlsx(file) {
 					}
 					else if (typeof val === 'boolean') { 
 						val = (val ? 1 : 0); t = 'b'; 
-						colWidth = 1;
+						colWidth = colWidth || 1;
 					}
 					else if (typeOf(val) === 'date') { 
 						val = convertDate(val); 
 						style.formatCode = cell.formatCode || 'mm-dd-yy'; 
-						colWidth = val.length;
+						colWidth = colWidth || val.length;
 					}
 					else if (typeof val === 'object') { val = null; } // unsupported value
-					else { colWidth = (''+val).length; } // number, or string which is a number
-					
+					else { colWidth = colWidth ||  (''+val).length; } // number, or string which is a number
 					// use stringified version as unic and reproductible style signature
 					style = JSON.stringify(style);
 					index = styles.indexOf(style);
@@ -254,9 +258,7 @@ function xlsx(file) {
 
 			cols = []
 			for (i = 0; i < columns.length; i++) {
-				if (columns[i].autoWidth) {
-					cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="1"/>');
-				}
+				cols.push('<col min="', i+1, '" max="', i+1, '" width="', columns[i].max, '" bestFit="', columns[i].autowidth?'1':'0', '"/>');
 			}
 			// only add cols definition if not empty
 			if (cols.length > 0) {
@@ -284,13 +286,18 @@ function xlsx(file) {
 			xlWorksheets.file('sheet' + id + '.xml', s + '</worksheet>');
 
 			if (worksheet.table) {
-				i = -1; l = data[0].length; t = numAlpha(data[0].length - 1) + data.length;
-				s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
-					+ '" name="Table' + id + '" displayName="Table' + id + '" ref="A1:' + t + '" totalsRowShown="0"><autoFilter ref="A1:' + t + '"/><tableColumns count="' + data[0].length + '">';
-				while (++i < l) { 
-					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[0][i].hasOwnProperty('value') ? data[0][i].value : data[0][i]) + '"/>'; 
+				if (typeof worksheet.table !== 'object'){
+					worksheet.table={topLeftRow: 0, topLeftColumn: 0, style: 'TableStyleMedium2', showRowStripes: true, showColumnStripes: false};
 				}
-				s += '</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
+				var tc=worksheet.table.topLeftColumn||0, tr=worksheet.table.topLeftRow||0, topLeft=numAlpha(tc)+(tr + 1);
+				i = tc-1; l = data[tr].length; t = numAlpha(data[tr].length - 1) + data.length;
+				s = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="' + id
+					+ '" name="Table' + id + '" displayName="Table' + id + '" ref="'+ topLeft +':' + t + 
+					'" totalsRowShown="0"><autoFilter ref="'+ topLeft +':' + t + '"/><tableColumns count="' + data[tr].length + '">';
+				while (++i < l) {
+					s += '<tableColumn id="' + (i + 1) + '" name="' + (data[tr][i].hasOwnProperty('value') ? data[tr][i].value : data[tr][i]) + '"/>'; 
+				}
+				s += '</tableColumns><tableStyleInfo name="'+(worksheet.table.style||'TableStyleMedium2')+'" showFirstColumn="0" showLastColumn="0" showRowStripes="'+(worksheet.table.showRowStripes?1:0)+'" showColumnStripes="'+(worksheet.table.showColumnStripes?1:0)+'"/></table>';
 
 				xl.folder('tables').file('table' + id + '.xml', s);
 				xlWorksheets.folder('_rels').file('sheet' + id + '.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table' + id + '.xml"/></Relationships>');
@@ -319,6 +326,21 @@ function xlsx(file) {
 				style.formatCode = index
 			} else {
 				style.formatCode = 0
+			}
+			
+			// background fill: add a new declaration and refer to it in style
+			fillIndex = 0;
+			if (style.backgroundColor){
+				var color=style.backgroundColor;
+				// add transparency if missing
+				if (color.length === 6) {
+					color = 'FF'+color;
+				}
+				fill = '<fill><patternFill patternType="solid"><fgColor rgb="'+color+'" /><bgColor indexed="64" /></patternFill></fill>';
+				fillIndex= fills.indexOf(fill);
+				if (fillIndex < 0) {
+					fillIndex = fills.push(fill) + 1;
+				}
 			}
 
 			// border declaration: add a new declaration and refer to it in style
@@ -349,7 +371,7 @@ function xlsx(file) {
 
 			// font declaration: add a new declaration and refer to it in style
 			fontIndex = 0
-			if (style.bold || style.italic || style.fontSize || style.fontName) {
+			if (style.bold || style.italic || style.fontSize || style.fontName || style.fontColor) {
 				font = ['<font>']
 				if (style.bold) {
 					font.push('<b/>');
@@ -358,7 +380,16 @@ function xlsx(file) {
 					font.push('<i/>');
 				}
 				font.push('<sz val="', style.fontSize || defaultFontSize, '"/>');
-				font.push('<color theme="1"/>');
+				if (style.fontColor){
+					var color = style.fontColor;
+					// add transparency if missing
+					if (color.length === 6) {
+						color = 'FF'+color;
+					}
+					font.push('<color rgb="',color, '"/>');
+				} else {
+					font.push('<color theme="1"/>');
+				}
 				font.push('<name val="', style.fontName || defaultFontName, '"/>');
 				font.push('<family val="2"/>', '</font>');
 				font = font.join('');
@@ -370,26 +401,31 @@ function xlsx(file) {
 			}
 
 			// declares style, and refer to optionnal formatCode, font and borders
-			styles[i] = ['<xf xfId="0" fillId="0" borderId="', 
+			styles[i] = ['<xf xfId="0" fillId="',
+			    fillIndex,
+			    '" borderId="', 
 				borderIndex, 
 				'" fontId="',
 				fontIndex,
 				'" numFmtId="',
 				style.formatCode,
 				'" ',
-				(style.hAlign || style.vAlign? 'applyAlignment="1" ' : ' '),
+				(style.hAlign || style.vAlign || style.wrapText ? 'applyAlignment="1" ' : ' '),
 				(style.formatCode > 0 ? 'applyNumberFormat="1" ' : ' '),
 				(borderIndex > 0 ? 'applyBorder="1" ' : ' '),
 				(fontIndex > 0 ? 'applyFont="1" ' : ' '),
 				'>'
 			];
-			if (style.hAlign || style.vAlign) {
+			if (style.hAlign || style.vAlign || style.wrapText) {
 				styles[i].push('<alignment');
 				if (style.hAlign) {
 					styles[i].push(' horizontal="', style.hAlign, '"');
 				}
 				if (style.vAlign) {
 					styles[i].push(' vertical="', style.vAlign, '"');
+				}
+				if (style.wrapText) {
+					styles[i].push(' wrapText="1"');
 				}
 				styles[i].push('/>');
 			}
@@ -400,7 +436,8 @@ function xlsx(file) {
 
 		xl.file('styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">'
 			+ t + '<fonts count="'+ fonts.length + '" x14ac:knownFonts="1"><font><sz val="' + defaultFontSize + '"/><color theme="1"/><name val="' + defaultFontName + '"/><family val="2"/>'
-			+ '<scheme val="minor"/></font>' + fonts.join('') + '</fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+			+ '<scheme val="minor"/></font>' + fonts.join('') + '</fonts><fills count="' + (2 + fills.length)
+			+ '"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' + fills.join('') + '</fills>'
 			+ '<borders count="' + borders.length + '"><border><left/><right/><top/><bottom/><diagonal/></border>'
 			+ borders.join('') + '</borders><cellStyleXfs count="1">'
 			+ '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + styles.length + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'

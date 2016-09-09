@@ -9,10 +9,10 @@ if ((typeof JSZip === 'undefined' || !JSZip) && typeof require === 'function') {
 }
 
 function xlsx(file) { 
-	'use strict'; // v2.3.2
+	'use strict'; // v2.3.3
 
-	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, sharedStrings, styles, index, data, val, style, borders, border, borderIndex, fonts, font, fontIndex,
-		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row, merges, merged,
+	var result, zip = new JSZip(), zipTime, processTime, s, f, i, j, k, l, t, w, n, o, p, q, r, u, sharedStrings, styles, index, data, data_validation, valid, type, criteria, title, message, source, val, style, borders, border, borderIndex, fonts, font, fontIndex,
+		docProps, xl, xlWorksheets, worksheet, contentTypes = [[], []], props = [], xlRels = [], worksheets = [], id, columns, cols, colWidth, cell, row, merges, validations, merged,
 		numFmts = ['General', '0', '0.00', '#,##0', '#,##0.00',,,,, '0%', '0.00%', '0.00E+00', '# ?/?', '# ??/??', 'mm-dd-yy', 'd-mmm-yy', 'd-mmm', 'mmm-yy', 'h:mm AM/PM', 'h:mm:ss AM/PM',
 			'h:mm', 'h:mm:ss', 'm/d/yy h:mm',,,,,,,,,,,,,,, '#,##0 ;(#,##0)', '#,##0 ;[Red](#,##0)', '#,##0.00;(#,##0.00)', '#,##0.00;[Red](#,##0.00)',,,,, 'mm:ss', '[h]:mm:ss', 'mmss.0', '##0.0E+0', '@'],
 		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -32,6 +32,25 @@ function xlsx(file) {
 			isDateObject = typeof input === 'object',
 			offset = ((isDateObject ? input.getTimezoneOffset() : (new Date()).getTimezoneOffset()) - d.getTimezoneOffset()) * 60000;
 		return isDateObject ? ((input - d - offset ) / 86400000) + 1 : new Date(+d - offset + (input - 1) * 86400000);
+	}
+	
+	function convertCriteria(input) {
+		switch(input) {
+		case "=":
+			return "equal"
+		case "<":
+			return "notEqual"
+		case ">":
+			return "greaterThan"
+		case "<":
+			return "lessThan"
+		case "<=":
+			return "lessThanOrEqual"
+		case ">=":
+			return "greaterThanOrEqual"
+		default:
+			return input
+		}
 	}
 
 	function typeOf(obj) {
@@ -159,7 +178,9 @@ function xlsx(file) {
 			// Generate worksheet (gather sharedStrings), and possibly table files, then generate entries for constant files below
 			id = w + 1;
 			// Generate sheetX.xml in var s
-			worksheet = file.worksheets[w]; data = worksheet.data;
+			worksheet = file.worksheets[w]; 
+			data = worksheet.data; 
+			data_validation = worksheet.data_validation;
 			s = '';
 			columns = [];
 			merges = [];
@@ -251,7 +272,32 @@ function xlsx(file) {
 				}
 				s += '</row>';
 			}
-
+			//data validation
+			validations = []
+			if(data_validation) {
+				r = '';
+				n = -1; o = data_validation.length;
+				while (++n < o) {
+					p = -1; q = data_validation[n].length;
+					while (++p < q) {
+						valid = data_validation[n][p]; 
+						val = valid.hasOwnProperty('value') ? valid.value : valid;
+						type = valid.error_type || "information";
+						title = valid.error_title || "Error"; 
+						message = valid.error_message || "";
+						criteria = valid.criteria || "";
+						source = valid.source || "";
+						if (["list","custom"].indexOf(valid.type) != -1) validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+source+'</formula1></dataValidation>');
+					
+						else if (["whole","decimal","date","time","length"].indexOf(valid.type) != -1) {
+							if (["between","notBetween"].indexOf(criteria) != -1) validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" operator="'+convertCriteria(criteria)+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+valid.minimum+'</formula1><formula2>'+valid.maximum+'</formula2></dataValidation>');
+							else  validations.push('<dataValidation type="'+valid.type+'" errorStyle="'+type+'" operator="'+convertCriteria(criteria)+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"><formula1>'+val+'</formula1></dataValidation>');
+						}
+						else validations.push('<dataValidation errorStyle="'+type+'" allowBlank="0" showDropDown="0" showInputMessage="1" showErrorMessage="1" errorMessage="'+message+'" promptTitle="'+title+'" errorTitle="'+title+'" sqref="'+numAlpha(p)+ (n+1) +'"></dataValidation>');
+					}
+				}
+			}
+			
 			cols = []
 			for (i = 0; i < columns.length; i++) {
 				if (columns[i].autoWidth) {
@@ -270,12 +316,23 @@ function xlsx(file) {
 				+ '<sheetData>'
 				+ s 
 				+ '</sheetData>';
+			if (worksheet.protected) {
+				s += '<sheetProtection password="8053" sheet="true" objects="false" scenarios="false" formatCells="false" formatColumns="false" formatRows="false" insertColumns="false" insertRows="false" insertHyperlinks="false" deleteColumns="false" deleteRows="false" selectLockedCells="false" sort="false" autoFilter="false" pivotTables="false" selectUnlockedCells="false"/>'
+			}
 			if (merges.length > 0) {
 				s += '<mergeCells count="' + merges.length + '">';
 				for (i = 0; i < merges.length; i++) {
 					s += '<mergeCell ref="' + merges[i].join(':') + '"/>';
 				}
 				s += '</mergeCells>';
+			}
+			//add in the validation
+			if (validations.length > 0) {
+				s += '<dataValidations count="'+validations.length+'">';
+				for (i = 0; i < validations.length; i++) {
+					s += validations[i];
+				}
+				s += '</dataValidations>';
 			}
 			s += '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
 			if (worksheet.table) { 

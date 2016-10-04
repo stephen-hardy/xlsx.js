@@ -8,6 +8,11 @@ if ((typeof JSZip === 'undefined' || !JSZip) && typeof require === 'function') {
 	var JSZip = require('node-zip');
 }
 
+// for < IE9
+if (!Date.now) {
+  Date.now = function() { return new Date().valueOf() }
+}
+
 function xlsx(file) { 
 	'use strict'; // v2.3.2
 

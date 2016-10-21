@@ -113,7 +113,7 @@ function xlsx(file) {
 			j = s.length;
 			while (--j) { // Don't process j === 0, because s[0] is the text before the first row element
 				row = w[+getAttr(s[j], 'r') - 1] = [];
-				columns = s[j].split('<c ');
+        s[j].slice(0, s[j].indexOf('</sheetData')).split('<c ');
 				k = columns.length;
 				while (--k) { // Don't process l === 0, because k[0] is the text before the first c (cell) element
 					cell = columns[k];
